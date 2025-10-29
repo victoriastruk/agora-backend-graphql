@@ -1,0 +1,56 @@
+colors: true
+skip_output: [meta, success]
+
+pre-commit:
+  parallel: true
+  commands:
+    lint:
+      glob: '**/*.{js,ts}'
+      run: |
+        echo "🔍 Linting backend code..."
+        bun run lint {staged_files}
+      skip: [merge, rebase]
+
+    typecheck:
+      glob: '**/*.ts'
+      run: |
+        echo "🔎 Type checking backend..."
+        bun run type-check
+      skip: [merge, rebase]
+
+    no-debug:
+      glob: '**/*.{js,ts}'
+      run: |
+        echo "🐛 Checking for debug code..."
+        if grep -n "console\\.log\\|debugger" {staged_files}; then
+          echo "⚠️ Debug code detected!"; exit 1;
+        fi
+      skip: ['src/index.ts']
+
+commit-msg:
+  parallel: true
+  commands:
+    commitlint:
+      run: |
+        echo "📝 Validating commit message..."
+        npx --no-install commitlint --edit "$1"
+
+post-merge:
+  commands:
+    update-deps:
+      run: |
+        echo "📦 Checking dependencies..."
+        if git diff --name-only ORIG_HEAD HEAD | grep -E 'bun\\.lock|package\\.json'; then
+          echo "📦 Updating dependencies..."
+          bun install
+        fi
+
+post-checkout:
+  commands:
+    setup:
+      run: |
+        echo "🧹 Preparing workspace..."
+        if [ "$3" = "1" ] && git diff --name-only $1 $2 | grep -E 'bun\\.lock|package\\.json'; then
+          echo "📦 Updating dependencies for new branch..."
+          bun install
+        fi
