@@ -14,7 +14,10 @@
     "preinstall": "npx only-allow bun"
   },
   "dependencies": {
-    "elysia": "latest"
+    "@apollo/server": "^5.1.0",
+    "@elysiajs/apollo": "^1.4.0",
+    "elysia": "latest",
+    "graphql": "^16.11.0"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.1.0",
