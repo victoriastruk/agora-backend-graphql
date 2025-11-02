@@ -17,7 +17,6 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
           count: safeUsers.length,
         };
       } catch (error) {
-        // Re-throw user-friendly errors as-is
         if (error instanceof Error) {
           const userFriendlyMessages = [
             'User not found',
@@ -28,7 +27,6 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
           if (userFriendlyMessages.some((msg) => error.message.includes(msg))) {
             throw error;
           }
-          // Log the actual error for debugging (skip in test environment)
           if (process.env.NODE_ENV !== 'test') {
             console.error('Database error in GET /users:', error);
           }
@@ -73,7 +71,26 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
             },
           },
           500: {
-            description: 'Internal server error',
+            description: 'Internal server error - failed to fetch users',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: false },
+                    message: {
+                      type: 'string',
+                      example: 'Failed to fetch users',
+                    },
+                    error: {
+                      type: 'string',
+                      example: 'Database connection failed',
+                    },
+                  },
+                  required: ['success', 'message'],
+                },
+              },
+            },
           },
         },
       },
@@ -147,8 +164,42 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
               },
             },
           },
+          400: {
+            description: 'Bad request - invalid user ID format',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: false },
+                    message: { type: 'string', example: 'Invalid user ID' },
+                  },
+                  required: ['success', 'message'],
+                },
+              },
+            },
+          },
           500: {
-            description: 'User not found or invalid user ID',
+            description: 'User not found, invalid user ID, or database error',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: false },
+                    message: {
+                      type: 'string',
+                      example: 'User not found',
+                    },
+                    error: {
+                      type: 'string',
+                      example: 'Database connection failed',
+                    },
+                  },
+                  required: ['success', 'message'],
+                },
+              },
+            },
           },
         },
       },
@@ -266,9 +317,43 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
           },
           400: {
             description: 'Validation error - invalid input data',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: false },
+                    message: {
+                      type: 'string',
+                      example: 'Password is required',
+                    },
+                  },
+                  required: ['success', 'message'],
+                },
+              },
+            },
           },
           500: {
             description: 'Username or email already exists, or database error',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: false },
+                    message: {
+                      type: 'string',
+                      example: 'Username already exists',
+                    },
+                    error: {
+                      type: 'string',
+                      example: 'Database connection failed',
+                    },
+                  },
+                  required: ['success', 'message'],
+                },
+              },
+            },
           },
         },
       },
@@ -404,10 +489,48 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
           },
           400: {
             description: 'Validation error - invalid input data',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: false },
+                    message: {
+                      type: 'string',
+                      example: 'Invalid input data',
+                    },
+                    error: {
+                      type: 'string',
+                      example: 'Validation Error',
+                    },
+                  },
+                  required: ['success', 'message'],
+                },
+              },
+            },
           },
           500: {
             description:
               'User not found, username/email conflict, or database error',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: false },
+                    message: {
+                      type: 'string',
+                      example: 'User not found',
+                    },
+                    error: {
+                      type: 'string',
+                      example: 'Username already exists',
+                    },
+                  },
+                  required: ['success', 'message'],
+                },
+              },
+            },
           },
         },
       },
@@ -482,8 +605,42 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
               },
             },
           },
+          400: {
+            description: 'Bad request - invalid user ID format',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: false },
+                    message: { type: 'string', example: 'Invalid user ID' },
+                  },
+                  required: ['success', 'message'],
+                },
+              },
+            },
+          },
           500: {
             description: 'User not found, invalid user ID, or database error',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: false },
+                    message: {
+                      type: 'string',
+                      example: 'User not found',
+                    },
+                    error: {
+                      type: 'string',
+                      example: 'Database connection failed',
+                    },
+                  },
+                  required: ['success', 'message'],
+                },
+              },
+            },
           },
         },
       },

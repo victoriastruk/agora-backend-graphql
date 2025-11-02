@@ -151,6 +151,22 @@ export const authController = new Elysia({ prefix: '/auth' })
           },
           500: {
             description: 'Internal server error',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: false },
+                    message: {
+                      type: 'string',
+                      example: 'Internal server error',
+                    },
+                    data: { type: 'object', nullable: true },
+                  },
+                  required: ['success', 'message'],
+                },
+              },
+            },
           },
         },
       },
@@ -297,6 +313,22 @@ export const authController = new Elysia({ prefix: '/auth' })
           },
           500: {
             description: 'Internal server error',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: false },
+                    message: {
+                      type: 'string',
+                      example: 'Internal server error',
+                    },
+                    data: { type: 'object', nullable: true },
+                  },
+                  required: ['success', 'message'],
+                },
+              },
+            },
           },
         },
       },
@@ -367,6 +399,22 @@ export const authController = new Elysia({ prefix: '/auth' })
           },
           500: {
             description: 'Internal server error',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: false },
+                    message: {
+                      type: 'string',
+                      example: 'Internal server error',
+                    },
+                    data: { type: 'object', nullable: true },
+                  },
+                  required: ['success', 'message'],
+                },
+              },
+            },
           },
         },
       },
@@ -491,6 +539,22 @@ export const authController = new Elysia({ prefix: '/auth' })
           },
           500: {
             description: 'Internal server error',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: false },
+                    message: {
+                      type: 'string',
+                      example: 'Internal server error',
+                    },
+                    data: { type: 'object', nullable: true },
+                  },
+                  required: ['success', 'message'],
+                },
+              },
+            },
           },
         },
       },

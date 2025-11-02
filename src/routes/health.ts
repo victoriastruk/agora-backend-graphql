@@ -34,6 +34,26 @@ export const healthRoutes = new Elysia()
                       example: '2024-01-01T00:00:00.000Z',
                     },
                   },
+                  required: ['status', 'timestamp'],
+                },
+              },
+            },
+          },
+          405: {
+            description: 'Method not allowed - only GET is supported',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: false },
+                    error: { type: 'string', example: 'Method Not Allowed' },
+                    message: {
+                      type: 'string',
+                      example: 'Only GET method is allowed for this endpoint',
+                    },
+                  },
+                  required: ['success', 'error', 'message'],
                 },
               },
             },
@@ -74,6 +94,26 @@ export const healthRoutes = new Elysia()
                     graphql: { type: 'string', example: '/graphql' },
                     health: { type: 'string', example: '/health' },
                   },
+                  required: ['message', 'version', 'docs', 'graphql', 'health'],
+                },
+              },
+            },
+          },
+          405: {
+            description: 'Method not allowed - only GET is supported',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: false },
+                    error: { type: 'string', example: 'Method Not Allowed' },
+                    message: {
+                      type: 'string',
+                      example: 'Only GET method is allowed for this endpoint',
+                    },
+                  },
+                  required: ['success', 'error', 'message'],
                 },
               },
             },
