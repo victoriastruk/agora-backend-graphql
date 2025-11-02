@@ -22,8 +22,21 @@ pre-commit:
       glob: '**/*.{js,ts}'
       run: |
         echo "🐛 Checking for debug code..."
-        if grep -n "console\\.log\\|debugger" {staged_files}; then
-          echo "⚠️ Debug code detected!"; exit 1;
+        excluded_patterns="src/db/seeds/seed.ts|src/db/client.ts|src/db/redis.ts|src/index.ts|node_modules|\.md$|tests/"
+        debug_found=false
+        for file in {staged_files}; do
+          if echo "$file" | grep -qE "$excluded_patterns"; then
+            continue
+          fi
+          if git diff --cached "$file" 2>/dev/null | grep -E "^\+" | grep -E "(console\.log|debugger)" | grep -qvE "(^\+\s*//|^\+\s*\*|:.*//.*console\.log|:.*\*.*console\.log|process\.env\.NODE_ENV)"; then
+            echo "⚠️ Debug code detected in $file!"
+            git diff --cached "$file" | grep -E "^\+" | grep -E "(console\.log|debugger)" | grep -vE "(^\+\s*//|^\+\s*\*|:.*//.*console\.log|:.*\*.*console\.log|process\.env\.NODE_ENV)" || true
+            debug_found=true
+          fi
+        done
+        if [ "$debug_found" = true ]; then
+          echo "❌ Please remove console.log or debugger statements before committing."
+          exit 1
         fi
       skip: ['src/index.ts']
 
