@@ -43,6 +43,7 @@ package-lock.json
 
 node_modules
 dist
+.idea
 .env
 *.log
 drizzle
