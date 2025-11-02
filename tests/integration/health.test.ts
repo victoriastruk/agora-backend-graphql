@@ -1,18 +1,13 @@
+import { describe, it, expect, beforeEach } from 'bun:test';
 import { createTestApp, testUtils } from '../utils/test-helpers';
-import { setupTestDb, teardownTestDb } from '../utils/test-db';
 
 describe('Health Routes Integration Tests', () => {
   let app: ReturnType<typeof createTestApp>;
   let agent: ReturnType<typeof testUtils.createAgent>;
 
   beforeEach(async () => {
-    await setupTestDb();
     app = createTestApp();
     agent = testUtils.createAgent(app);
-  });
-
-  afterAll(async () => {
-    await teardownTestDb();
   });
 
   describe('GET /', () => {
@@ -45,6 +40,16 @@ describe('Health Routes Integration Tests', () => {
       expect(data1.message).toBe(data2.message);
       expect(data1.version).toBe(data2.version);
     });
+
+    it('should have all required fields', async () => {
+      const response = await agent.get('/');
+      const data = await testUtils.parseResponse(response);
+
+      expect(data.message).toBeDefined();
+      expect(data.version).toBeDefined();
+      expect(typeof data.message).toBe('string');
+      expect(typeof data.version).toBe('string');
+    });
   });
 
   describe('GET /health', () => {
@@ -55,6 +60,11 @@ describe('Health Routes Integration Tests', () => {
       expect(response.status).toBe(200);
       expect(data.status).toBe('ok');
       expect(data.timestamp).toBeDefined();
+    });
+
+    it('should return valid ISO timestamp', async () => {
+      const response = await agent.get('/health');
+      const data = await testUtils.parseResponse(response);
 
       expect(() => new Date(data.timestamp)).not.toThrow();
       expect(new Date(data.timestamp).toISOString()).toBe(data.timestamp);
@@ -102,6 +112,11 @@ describe('Health Routes Integration Tests', () => {
 
       const putResponse = await agent.put('/', {});
       expect(putResponse.status).toBe(405);
+    });
+
+    it('should handle DELETE method on root route', async () => {
+      const response = await agent.delete('/');
+      expect(response.status).toBe(405);
     });
   });
 });

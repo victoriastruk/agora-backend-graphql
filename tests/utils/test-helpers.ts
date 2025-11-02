@@ -19,9 +19,12 @@ export const createTestApp = (config?: Partial<AppConfig>): Elysia => {
     ...config,
   };
 
-  const testDb = getTestDb;
-  if (testDb) {
-    setDbInstance(testDb);
+  try {
+    const testDb = getTestDb;
+    if (testDb) {
+      setDbInstance(testDb as any);
+    }
+  } catch {
   }
 
   const requestLogger = createRequestLogger({ logger: appConfig.logger });
@@ -42,74 +45,103 @@ export const createTestApp = (config?: Partial<AppConfig>): Elysia => {
 
 export const testUtils = {
   createAgent: (app: Elysia) => {
+    const baseUrl = 'http://localhost';
+
     return {
-      get: (path: string) =>
-        app.handle(new Request(`http://localhost${path}`, { method: 'GET' })),
-      post: (path: string, body?: any) =>
-        app.handle(
-          new Request(`http://localhost${path}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: body ? JSON.stringify(body) : undefined,
-          })
-        ),
-      put: (path: string, body?: any) =>
-        app.handle(
-          new Request(`http://localhost${path}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: body ? JSON.stringify(body) : undefined,
-          })
-        ),
-      delete: (path: string) =>
-        app.handle(
-          new Request(`http://localhost${path}`, { method: 'DELETE' })
-        ),
+      get: async (path: string, options?: RequestInit) => {
+        return app.handle(new Request(`${baseUrl}${path}`, {
+          method: 'GET',
+          ...options,
+        }));
+      },
+
+      post: async (path: string, body?: any, options?: RequestInit) => {
+        return app.handle(new Request(`${baseUrl}${path}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...options?.headers,
+          },
+          body: body ? JSON.stringify(body) : undefined,
+          ...options,
+        }));
+      },
+
+      put: async (path: string, body?: any, options?: RequestInit) => {
+        return app.handle(new Request(`${baseUrl}${path}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            ...options?.headers,
+          },
+          body: body ? JSON.stringify(body) : undefined,
+          ...options,
+        }));
+      },
+
+      delete: async (path: string, options?: RequestInit) => {
+        return app.handle(new Request(`${baseUrl}${path}`, {
+          method: 'DELETE',
+          ...options,
+        }));
+      },
+
+      patch: async (path: string, body?: any, options?: RequestInit) => {
+        return app.handle(new Request(`${baseUrl}${path}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            ...options?.headers,
+          },
+          body: body ? JSON.stringify(body) : undefined,
+          ...options,
+        }));
+      },
     };
   },
 
-  parseResponse: async (response: Response) => {
+  parseResponse: async (response: Response): Promise<any> => {
+    const contentType = response.headers.get('content-type');
     const text = await response.text();
-    try {
-      return JSON.parse(text);
-    } catch {
-      return text;
+    
+    if (contentType?.includes('application/json')) {
+      try {
+        return JSON.parse(text);
+      } catch {
+        return text;
+      }
     }
+    
+    return text;
   },
 
   generateTestUser: (overrides = {}) => ({
-    username: `testuser_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    username: `testuser_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
     email: `test${Date.now()}@example.com`,
-    passwordHash: 'hashed_password_123',
+    password: 'TestPassword123!',
     ...overrides,
   }),
 
   wait: (ms: number) => new Promise((resolve) => setTimeout(resolve, ms)),
+
+  getCookie: (response: Response, cookieName: string): string | null => {
+    const setCookie = response.headers.get('set-cookie');
+    if (!setCookie) return null;
+
+    const cookies = setCookie.split(',').map(c => c.trim());
+    const cookie = cookies.find(c => c.startsWith(`${cookieName}=`));
+    
+    if (!cookie) return null;
+    
+    return cookie.split(';')[0].split('=')[1] || null;
+  },
 };
 
 export const mockTemplates = {
   redis: () => ({
-    setex: vi?.fn() || (() => {}),
-    get: vi?.fn() || (() => {}),
-    del: vi?.fn() || (() => {}),
-    expire: vi?.fn() || (() => {}),
+    setex: () => Promise.resolve('OK'),
+    get: () => Promise.resolve(null),
+    del: () => Promise.resolve(1),
+    expire: () => Promise.resolve(1),
   }),
-};
-
-export const testLifecycle = {
-  beforeAll: () => {
-    process.env.NODE_ENV = 'test';
-  },
-
-  afterAll: () => {
-    if (typeof vi !== 'undefined') {
-      vi.restoreAllMocks();
-    }
-  },
-
-  beforeEach: () => {
-    if (typeof vi !== 'undefined') {
-      vi.clearAllMocks();
-    }
-  },
 };

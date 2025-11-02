@@ -1,296 +1,274 @@
-# Testing Suite
+# Test Suite Documentation
 
-This project uses a comprehensive testing suite built with **Vitest** and **Bun** runtime, following Elysia's best testing practices. The suite includes unit tests for utilities and integration tests for API routes.
+This directory contains a comprehensive test suite for the Reddit Backend API, built using **Bun's built-in test runner** and following **Elysia's recommended testing patterns**.
 
-## 🏗️ Test Structure
+## 📁 Directory Structure
 
 ```
 tests/
-├── setup.ts                    # Global test configuration and setup
-├── utils/                      # Test utilities and helpers
-│   ├── test-db.ts             # Database setup/teardown utilities
-│   └── test-helpers.ts        # Common test helpers and mocks
-├── unit/                      # Unit tests
-│   ├── auth.test.ts          # Authentication utilities tests
-│   └── logger.test.ts        # Logger utilities tests
-├── integration/               # Integration tests
-│   ├── users.test.ts         # Users API routes tests
-│   └── health.test.ts        # Health check routes tests
-└── README.md                 # This documentation
+├── unit/              # Unit tests for utilities and helpers
+│   ├── auth.test.ts   # Authentication utility tests
+│   └── logger.test.ts # Logger utility tests
+├── integration/       # Integration tests for API routes
+│   ├── auth.test.ts   # Authentication route tests
+│   ├── users.test.ts  # User CRUD route tests
+│   └── health.test.ts # Health check route tests
+├── utils/             # Test utilities and helpers
+│   ├── test-helpers.ts # Elysia app factory and test utilities
+│   └── test-db.ts     # Database setup and utilities
+├── setup.ts           # Global test setup and teardown
+└── README.md          # This file
 ```
 
 ## 🚀 Running Tests
 
-### Prerequisites
-
-1. **Install dependencies:**
-   ```bash
-   bun install
-   ```
-
-2. **Set up test database:**
-   The tests automatically use an in-memory SQLite database, so no additional setup is required.
-
-### Test Commands
+### Run All Tests
 
 ```bash
-# Run all tests
-bun run test
-
-# Run tests in watch mode (re-runs on file changes)
-bun run test:watch
-
-# Run only unit tests
-bun run test:unit
-
-# Run only integration tests
-bun run test:integration
-
-# Run tests with coverage report
-bun run test:coverage
-
-# Run tests with UI (requires @vitest/ui)
-bun run test:ui
+bun test
 ```
 
-### Environment Configuration
+### Run Specific Test Suites
 
-Tests use the `.env.test` file for configuration:
+```bash
+# Unit tests only
+bun test tests/unit
 
-- **Database:** In-memory SQLite for fast, isolated testing
-- **Redis:** Mocked for session management tests
-- **JWT:** Test-specific secrets
-- **CORS:** Localhost origins for testing
+# Integration tests only
+bun test tests/integration
 
-## 📋 Test Categories
+# Specific test file
+bun test tests/integration/auth.test.ts
+```
 
-### Unit Tests (`tests/unit/`)
+### Watch Mode
 
-Unit tests focus on individual functions and utilities without external dependencies.
+```bash
+bun test --watch
+```
 
-#### AuthUtils Tests (`auth.test.ts`)
-- Password hashing and verification
-- Session ID generation
-- Session management (create, get, destroy, extend)
-- Redis integration mocking
+### Coverage
 
-#### Logger Tests (`logger.test.ts`)
-- Logging methods (info, warn, error, debug)
-- Request context tracking with AsyncLocalStorage
-- Performance monitoring with timing
-- HTTP request/response logging
-- Database operation logging
-- Application lifecycle logging
+```bash
+bun test --coverage
+```
 
-### Integration Tests (`tests/integration/`)
+## 🏗️ Test Architecture
 
-Integration tests verify complete request/response cycles through Elysia routes.
+### Test Database
 
-#### Users Routes Tests (`users.test.ts`)
-- **GET /users** - List all users (with password hash exclusion)
-- **GET /users/:id** - Get specific user by ID
-- **POST /users** - Create new user with validation
-- **PUT /users/:id** - Update user information
-- **DELETE /users/:id** - Delete user
+The test suite uses **PostgreSQL** for integration tests, matching the production environment:
 
-**Features tested:**
-- CRUD operations
-- Input validation (username length, email format)
-- Unique constraint enforcement (username/email conflicts)
-- Error handling (non-existent users, invalid IDs)
-- Password hash exclusion from responses
-- Database transaction integrity
+- Uses the same PostgreSQL database as production (typically via Docker)
+- Tests use a separate test database connection for isolation
+- Database tables are automatically created if they don't exist
+- Clean database state between test runs via `clearTestDb()`
 
-#### Health Routes Tests (`health.test.ts`)
-- **GET /** - API information endpoint
-- **GET /health** - Health check with timestamp
-- HTTP method validation
-- Route availability testing
+The test database utilities (`tests/utils/test-db.ts`) handle:
 
-## 🛠️ Test Utilities
+- Database setup and teardown
+- Data seeding and cleanup
+- Test user/session creation helpers
 
-### Database Testing (`test-db.ts`)
+**Prerequisites**: Ensure PostgreSQL is running (via Docker Compose or locally) before running tests.
+
+### Test Helpers
+
+The `test-helpers.ts` file provides:
+
+1. **`createTestApp()`** - Creates an Elysia app instance with all plugins and routes
+2. **`testUtils.createAgent()`** - Creates an HTTP test agent using Elysia's `app.handle()` method
+3. **`testUtils.parseResponse()`** - Parses response bodies (JSON or text)
+4. **`testUtils.generateTestUser()`** - Generates unique test user data
+5. **`testUtils.getCookie()`** - Extracts cookies from responses
+
+### Following Elysia Patterns
+
+Our tests follow Elysia's recommended testing approach:
+
+1. **Using `app.handle()`** - We use Elysia's built-in request handling method
+2. **Request/Response Objects** - Using native Web API `Request` and `Response` objects
+3. **No External HTTP Server** - Tests run without starting an actual server
+4. **Fast and Isolated** - Each test gets a fresh app instance
+
+## 📝 Writing Tests
+
+### Unit Test Example
 
 ```typescript
-import { setupTestDb, teardownTestDb, clearTestDb, createTestUser } from './utils/test-db';
+import { describe, it, expect, beforeEach } from 'bun:test';
+import { AuthUtils } from '@/utils/auth';
 
-// Set up fresh database for each test
-setupTestDb();
+describe('AuthUtils', () => {
+  beforeEach(() => {
+    // Reset mocks or state
+  });
 
-// Clean up after each test
-teardownTestDb();
+  it('should hash password correctly', async () => {
+    const password = 'SecurePass123!';
+    const hash = await AuthUtils.hashPassword(password);
 
-// Clear all data between tests
-await clearTestDb();
+    expect(hash).toBeDefined();
+    expect(hash).not.toBe(password);
+  });
+});
+```
+
+### Integration Test Example
+
+```typescript
+import { describe, it, expect, beforeEach, afterAll } from 'bun:test';
+import { createTestApp, testUtils } from '../utils/test-helpers';
+import { setupTestDb, teardownTestDb, clearTestDb } from '../utils/test-db';
+
+describe('Users API', () => {
+  let app: ReturnType<typeof createTestApp>;
+  let agent: ReturnType<typeof testUtils.createAgent>;
+
+  beforeEach(async () => {
+    await setupTestDb();
+    await clearTestDb();
+    app = createTestApp();
+    agent = testUtils.createAgent(app);
+  });
+
+  afterAll(async () => {
+    await teardownTestDb();
+  });
+
+  it('should create a user', async () => {
+    const response = await agent.post('/users', {
+      username: 'testuser',
+      email: 'test@example.com',
+      passwordHash: 'hashed_password',
+    });
+
+    const data = await testUtils.parseResponse(response);
+    expect(response.status).toBe(201);
+    expect(data.success).toBe(true);
+  });
+});
+```
+
+## 🔧 Test Utilities
+
+### Database Helpers
+
+```typescript
+import {
+  setupTestDb,
+  teardownTestDb,
+  clearTestDb,
+  createTestUser,
+  getTestUser,
+  getAllTestUsers,
+} from '../utils/test-db';
+
+// Setup database (done in beforeEach)
+await setupTestDb();
 
 // Create test data
 const user = await createTestUser({
   username: 'testuser',
   email: 'test@example.com',
-  passwordHash: 'hashed_password'
+  passwordHash: 'hashed_password',
 });
+
+// Cleanup (done in afterEach)
+await clearTestDb();
+
+// Teardown (done in afterAll)
+await teardownTestDb();
 ```
 
-### Test Helpers (`test-helpers.ts`)
+### Test Agent
 
 ```typescript
-import { createTestApp, testUtils } from './utils/test-helpers';
+import { createTestApp, testUtils } from '../utils/test-helpers';
 
-// Create a test Elysia app
 const app = createTestApp();
-
-// Create request agent
 const agent = testUtils.createAgent(app);
 
 // Make requests
 const response = await agent.get('/users');
+const postResponse = await agent.post('/users', { username: 'test' });
+const putResponse = await agent.put('/users/1', { email: 'new@example.com' });
+const deleteResponse = await agent.delete('/users/1');
+
+// Parse responses
 const data = await testUtils.parseResponse(response);
-
-// Generate test data
-const userData = testUtils.generateTestUser();
 ```
 
-### Mock Management
+## 🎯 Best Practices
 
-Tests use Vitest's mocking capabilities:
-
-```typescript
-import { vi } from 'vitest';
-
-// Mock external services
-vi.mock('@/db/redis', () => ({
-  redis: {
-    setex: vi.fn(),
-    get: vi.fn(),
-    del: vi.fn(),
-  },
-}));
-```
-
-## 🔄 Test Lifecycle
-
-### Setup and Teardown
-
-- **Global Setup:** Environment configuration, global mocks
-- **Per-Test Setup:** Fresh database instance, cleared data
-- **Per-Test Teardown:** Database cleanup, mock resets
-
-### Database Isolation
-
-Each test runs with:
-- Fresh in-memory SQLite database
-- Clean schema (migrations applied automatically)
-- Isolated data (no cross-test contamination)
-- Automatic cleanup after each test
-
-## 📊 Coverage and Quality
-
-### Coverage Goals
-
-- **Unit Tests:** 90%+ coverage for utilities
-- **Integration Tests:** 100% route coverage
-- **Error Paths:** All error conditions tested
-
-### Code Quality
-
-- **Assertions:** Descriptive test names and clear assertions
-- **Isolation:** No test dependencies on external state
-- **Performance:** Fast execution with in-memory database
-- **Maintainability:** Clear test structure and documentation
+1. **Isolation**: Each test should be independent and not rely on other tests
+2. **Cleanup**: Always clean up test data in `afterEach` or `afterAll`
+3. **Descriptive Names**: Use clear, descriptive test names
+4. **Arrange-Act-Assert**: Structure tests with clear setup, action, and assertions
+5. **Mock External Services**: Mock Redis, external APIs, etc., in unit tests
+6. **Use Real Database in Integration Tests**: Integration tests use a real PostgreSQL database
 
 ## 🐛 Debugging Tests
 
-### Common Issues
+### Run Single Test
 
-1. **Database Connection Errors:**
-   - Ensure `.env.test` is properly configured
-   - Check that migrations run successfully
-
-2. **Mock Issues:**
-   - Clear mocks between tests: `vi.clearAllMocks()`
-   - Verify mock implementations match actual usage
-
-3. **Async Operations:**
-   - Use `await` for all database operations
-   - Ensure proper cleanup in `afterEach`
-
-### Debugging Tips
-
-```typescript
-// Add debug logging
-console.log('Test data:', testData);
-
-// Inspect response details
-console.log('Response status:', response.status);
-console.log('Response data:', await response.text());
-
-// Check database state
-const users = await getAllTestUsers();
-console.log('Database users:', users);
+```bash
+bun test tests/integration/auth.test.ts -t "should login successfully"
 ```
 
-## 🚀 Extending Tests
+### Verbose Output
 
-### Adding Unit Tests
-
-1. Create test file in `tests/unit/`
-2. Import utilities to test
-3. Write descriptive test cases
-4. Mock external dependencies
-
-### Adding Integration Tests
-
-1. Create test file in `tests/integration/`
-2. Use `createTestApp()` for app instance
-3. Use `testUtils.createAgent()` for requests
-4. Test complete request/response cycles
-
-### Adding New Test Utilities
-
-1. Add to `tests/utils/`
-2. Export from appropriate modules
-3. Document usage in this README
-
-## 📈 CI/CD Integration
-
-Tests are designed to run in CI/CD pipelines:
-
-```yaml
-# Example GitHub Actions
-- name: Run Tests
-  run: bun run test:coverage
-
-- name: Upload Coverage
-  uses: codecov/codecov-action@v3
-  with:
-    file: ./coverage/lcov.info
+```bash
+bun test --verbose
 ```
 
-## 🔧 Configuration
+### Inspect Test Database
 
-### Vitest Configuration (`vitest.config.ts`)
+You can connect to the PostgreSQL test database directly using any PostgreSQL client:
 
-- Node environment for server-side testing
-- Global test functions enabled
-- Path aliases configured
-- Setup file for global configuration
+```bash
+# Using psql
+psql postgresql://postgres:pass@localhost:5432/reddit-server
 
-### Environment Variables
+# Or using Docker
+docker exec -it reddit-postgres psql -U postgres -d reddit-server
+```
 
-Test-specific environment in `.env.test`:
-- Isolated database (SQLite in-memory)
-- Mocked external services
-- Test-specific secrets
+## 🔍 Test Coverage
 
----
+The test suite covers:
 
-## 📚 Best Practices
+### Unit Tests
 
-- **Test Isolation:** Each test should be independent
-- **Descriptive Names:** Clear test and suite names
-- **Arrange-Act-Assert:** Follow AAA pattern
-- **Mock Wisely:** Only mock external dependencies
-- **Fast Feedback:** Keep tests fast and focused
-- **Documentation:** Keep this README updated
+- ✅ Authentication utilities (password hashing, session management)
+- ✅ Logger utilities (logging methods, request tracking)
 
-For questions or issues with the test suite, check the test files for examples or create an issue in the repository.
+### Integration Tests
+
+- ✅ Health check routes (`/`, `/health`)
+- ✅ User CRUD operations (`/users`)
+- ✅ Authentication routes (`/auth/register`, `/auth/login`, `/auth/logout`, `/auth/me`)
+
+## 📚 Additional Resources
+
+- [Bun Test Documentation](https://bun.sh/docs/cli/test)
+- [Elysia Testing Guide](https://elysiajs.com/essential/testing.html)
+- [Drizzle ORM Testing](https://orm.drizzle.team/docs/tests)
+
+## 🤝 Contributing
+
+When adding new features:
+
+1. Write unit tests for new utilities
+2. Write integration tests for new routes
+3. Ensure all tests pass before submitting PRs
+4. Maintain test coverage above 80%
+
+## ⚠️ Notes
+
+- Tests use PostgreSQL matching the production environment
+- Ensure PostgreSQL is running before running tests (use `docker compose up -d` or start PostgreSQL locally)
+- Redis is mocked in unit tests but can use real Redis in integration tests
+- Test database connection is automatically set up and torn down
+- Test database URL can be configured via `TEST_DATABASE_URL` environment variable
+- Default test database uses the same connection as development: `postgresql://postgres:pass@localhost:5432/reddit-server`
