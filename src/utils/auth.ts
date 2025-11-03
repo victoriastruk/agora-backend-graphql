@@ -82,6 +82,16 @@ export class AuthUtils {
     if (!session) return;
 
     const sessionKey = this.getSessionKey(sessionId);
-    await redis.expire(sessionKey, this.SESSION_TTL);
+    const newExpiresAt = Date.now() + this.SESSION_TTL * 1000;
+
+    await redis.setex(
+      sessionKey,
+      this.SESSION_TTL,
+      JSON.stringify({
+        userId: session.userId,
+        createdAt: Date.now(),
+        expiresAt: newExpiresAt,
+      })
+    );
   }
 }
