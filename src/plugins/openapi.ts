@@ -1,7 +1,7 @@
-import swagger from '@elysiajs/swagger';
+import { openapi } from '@elysiajs/openapi';
 import { env } from '@/shared/config/env';
 
-export const swaggerPlugin = swagger({
+export const openApiPlugin = openapi({
   documentation: {
     openapi: '3.0.0',
     info: {
@@ -44,12 +44,5 @@ export const swaggerPlugin = swagger({
     },
   },
   path: '/swagger',
-  swaggerOptions: {
-    persistAuthorization: true,
-    displayRequestDuration: true,
-    tryItOutEnabled: true,
-    filter: true,
-    showExtensions: true,
-    showCommonExtensions: true,
-  },
+  specPath: '/swagger/json',
 });

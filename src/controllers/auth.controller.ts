@@ -45,9 +45,25 @@ export const authController = new Elysia({ prefix: '/api' })
     },
     {
       body: registerSchema,
-      detail: {
-        summary: 'Register a new user',
-        tags: ['Authentication'],
+      tags: ['Authentication'],
+      summary: 'Register a new user',
+      response: {
+        201: t.Object({
+          success: t.Boolean(),
+          message: t.String(),
+        }),
+        400: t.Object({
+          success: t.Boolean(),
+          message: t.String(),
+        }),
+        409: t.Object({
+          success: t.Boolean(),
+          message: t.String(),
+        }),
+        500: t.Object({
+          success: t.Boolean(),
+          message: t.String(),
+        }),
       },
     }
   )
@@ -60,48 +76,63 @@ export const authController = new Elysia({ prefix: '/api' })
 
         const user =
           await AuthQueries.findUserByUsernameOrEmail(usernameOrEmail);
-
         if (
           !user ||
           !(await AuthUtils.verifyPassword(user.passwordHash, password))
         ) {
           set.status = 401;
-          return ResponseUtils.success('Invalid credentials');
+          return ResponseUtils.error('Invalid credentials', 401);
         }
 
         const sessionId = await AuthUtils.createSession(user.id);
-
-        const sessionCookie = cookie['sessionId'];
-        Object.assign(sessionCookie, {
+        Object.assign(cookie['sessionId'], {
           value: sessionId,
           httpOnly: true,
           path: '/',
           sameSite: 'strict',
           secure: process.env.NODE_ENV === 'production',
           maxAge: 7 * 24 * 60 * 60,
-          domain: 'localhost',
         });
 
         set.status = 200;
-        return ResponseUtils.success('Login successful');
+        return ResponseUtils.success('Login successful', {
+          user: {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+          },
+        });
       } catch (error) {
-        const err = error as Error;
-        console.error('Login error:', err);
-
-        if (err.name === 'ZodError') {
-          set.status = 400;
-          return ResponseUtils.error('Invalid input data', 400);
-        }
-
+        console.error('Login error:', error);
         set.status = 500;
         return ResponseUtils.error('Internal server error', 500);
       }
     },
     {
       body: loginSchema,
-      detail: {
-        summary: 'Login user',
-        tags: ['Authentication'],
+      tags: ['Authentication'],
+      summary: 'Login user',
+
+      response: {
+        200: t.Object({
+          success: t.Boolean(),
+          message: t.String(),
+          data: t.Object({
+            user: t.Object({
+              id: t.Number(),
+              username: t.String(),
+              email: t.String(),
+            }),
+          }),
+        }),
+        401: t.Object({
+          success: t.Boolean(),
+          message: t.String(),
+        }),
+        500: t.Object({
+          success: t.Boolean(),
+          message: t.String(),
+        }),
       },
     }
   )
@@ -118,7 +149,6 @@ export const authController = new Elysia({ prefix: '/api' })
 
         cookie.sessionId.value = '';
         cookie.sessionId.httpOnly = true;
-        // cookie.sessionId.httpOnly = false;
         cookie.sessionId.path = '/';
         cookie.sessionId.sameSite = 'strict';
         cookie.sessionId.secure = process.env.NODE_ENV === 'production';
@@ -139,11 +169,17 @@ export const authController = new Elysia({ prefix: '/api' })
       }
     },
     {
-      detail: {
-        summary: 'Logout user',
-        description:
-          'Logs out the current user by destroying their session and clearing the session cookie.',
-        tags: ['Authentication'],
+      tags: ['Authentication'],
+      summary: 'Logout user',
+      response: {
+        200: t.Object({
+          success: t.Boolean(),
+          message: t.String(),
+        }),
+        500: t.Object({
+          success: t.Boolean(),
+          message: t.String(),
+        }),
       },
     }
   )
@@ -170,22 +206,14 @@ export const authController = new Elysia({ prefix: '/api' })
           cookie.sessionId.expires = new Date(0);
 
           set.status = 401;
-          return {
-            success: false,
-            message: 'Session expired',
-            data: null,
-          };
+          return ResponseUtils.error('Session expired', 401);
         }
 
         const user = await AuthQueries.findUserById(session.userId);
 
         if (!user) {
           set.status = 401;
-          return {
-            success: false,
-            message: 'User not found',
-            data: null,
-          };
+          return ResponseUtils.error('User not found', 401);
         }
 
         if (typeof sessionId === 'string') {
@@ -193,14 +221,15 @@ export const authController = new Elysia({ prefix: '/api' })
         }
 
         const { passwordHash: _, ...userResponse } = user;
-
-        return {
-          success: true,
-          message: 'User authenticated',
-          data: {
-            user: userResponse,
-          },
+        const formattedUser = {
+          ...userResponse,
+          createdAt: userResponse.createdAt
+            ? new Date(userResponse.createdAt).toISOString()
+            : undefined,
         };
+        return ResponseUtils.success('User authenticated', {
+          user: formattedUser,
+        });
       } catch (error) {
         console.error('Auth check error:', error);
         set.status = 500;
@@ -212,11 +241,29 @@ export const authController = new Elysia({ prefix: '/api' })
       }
     },
     {
-      detail: {
-        summary: 'Get current user',
-        description:
-          "Retrieves the currently authenticated user's information based on their session cookie.",
-        tags: ['Authentication'],
+      tags: ['Authentication'],
+      summary: 'Get current user',
+      response: {
+        200: t.Object({
+          success: t.Boolean(),
+          message: t.String(),
+          data: t.Object({
+            user: t.Object({
+              id: t.Number(),
+              username: t.String(),
+              email: t.String(),
+              createdAt: t.Optional(t.String({ format: 'date-time' })),
+            }),
+          }),
+        }),
+        401: t.Object({
+          success: t.Boolean(),
+          message: t.String(),
+        }),
+        500: t.Object({
+          success: t.Boolean(),
+          message: t.String(),
+        }),
       },
     }
   );
