@@ -8,6 +8,7 @@ import { errorPlugin } from '@/plugins/error';
 import { createRequestLogger } from '@/plugins/request-logger';
 import { routes } from '@/routes';
 import { authController } from '@/controllers/auth.controller';
+import { googleAuthController } from './controllers/googleAuth.controller';
 import { healthRoutes } from '@/routes/health';
 import { logger } from '@/utils/logger';
 import { AppConfig } from '@/types/app';
@@ -33,6 +34,7 @@ class Application {
       .use(yogaPlugin)
       .use(healthRoutes)
       .use(authController)
+      .use(googleAuthController)
       .use(routes[0])
       .onStop(() => {
         this.config.logger.logServerShutdown();

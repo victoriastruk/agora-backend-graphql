@@ -33,6 +33,15 @@ export class AuthQueries {
 
     return user || null;
   }
+  static async findUserByEmail(email: string): Promise<User | null> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+
+    return user || null;
+  }
 
   static async createUser(userData: NewUser): Promise<User> {
     const [user] = await db.insert(users).values(userData).returning();
