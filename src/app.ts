@@ -3,7 +3,6 @@ import { env } from '@/shared/config/env';
 import { closeDbConnection } from '@/db/client';
 import { closeRedisConnection } from '@/db/redis';
 import { corsPlugin } from '@/plugins/cors';
-import { openapi } from '@elysiajs/openapi';
 import { yogaPlugin } from '@/plugins/yoga';
 import { errorPlugin } from '@/plugins/error';
 import { createRequestLogger } from '@/plugins/request-logger';
@@ -30,7 +29,6 @@ class Application {
       .use(requestLogger)
       .use(errorPlugin)
       .use(corsPlugin)
-      .use(openapi())
       .use(openApiPlugin)
       .use(yogaPlugin)
       .use(healthRoutes)

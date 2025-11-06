@@ -1,6 +1,6 @@
 import { Elysia } from 'elysia';
 import { corsPlugin } from '@/plugins/cors';
-import { swaggerPlugin } from '@/plugins/swagger';
+// import { swaggerPlugin } from '@/plugins/swagger';
 import { yogaPlugin } from '@/plugins/yoga';
 import { errorPlugin } from '@/plugins/error';
 import { createRequestLogger } from '@/plugins/request-logger';
@@ -34,7 +34,7 @@ export const createTestApp = (config?: Partial<AppConfig>): Elysia => {
     .use(requestLogger)
     .use(errorPlugin)
     .use(corsPlugin)
-    .use(swaggerPlugin)
+    // .use(swaggerPlugin)
     .use(yogaPlugin)
     .use(healthRoutes)
     .use(authController)

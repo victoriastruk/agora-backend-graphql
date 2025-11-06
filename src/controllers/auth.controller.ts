@@ -7,7 +7,7 @@ import { registerSchema, loginSchema } from '@/types/auth';
 export const authController = new Elysia({ prefix: '/api' })
   .post(
     '/register',
-    async ({ body, set }) => {
+    async ({ body, set, cookie }) => {
       try {
         const { username, email, password } = body;
 
@@ -21,15 +21,24 @@ export const authController = new Elysia({ prefix: '/api' })
         }
 
         const passwordHash = await AuthUtils.hashPassword(password);
-
-        await AuthQueries.createUser({
+        const newUser = await AuthQueries.createUser({
           username,
           email,
           passwordHash,
         });
 
+        const sessionId = await AuthUtils.createSession(newUser.id);
+        Object.assign(cookie['sessionId'], {
+          value: sessionId,
+          httpOnly: true,
+          path: '/',
+          sameSite: 'strict',
+          secure: process.env.NODE_ENV === 'production',
+          maxAge: 7 * 24 * 60 * 60,
+        });
+
         set.status = 201;
-        return ResponseUtils.success('User registered successfully', 201);
+        return ResponseUtils.success('User registered and logged in', 201);
       } catch (error) {
         const err = error as Error;
         console.error('Registration error:', err);
@@ -46,7 +55,7 @@ export const authController = new Elysia({ prefix: '/api' })
     {
       body: registerSchema,
       tags: ['Authentication'],
-      summary: 'Register a new user',
+      summary: 'Register and login user',
       response: {
         201: t.Object({
           success: t.Boolean(),
@@ -67,7 +76,6 @@ export const authController = new Elysia({ prefix: '/api' })
       },
     }
   )
-
   .post(
     '/login',
     async ({ body, set, cookie }) => {
@@ -95,13 +103,7 @@ export const authController = new Elysia({ prefix: '/api' })
         });
 
         set.status = 200;
-        return ResponseUtils.success('Login successful', {
-          user: {
-            id: user.id,
-            username: user.username,
-            email: user.email,
-          },
-        });
+        return ResponseUtils.success('Login successful', 200);
       } catch (error) {
         console.error('Login error:', error);
         set.status = 500;
@@ -117,13 +119,6 @@ export const authController = new Elysia({ prefix: '/api' })
         200: t.Object({
           success: t.Boolean(),
           message: t.String(),
-          data: t.Object({
-            user: t.Object({
-              id: t.Number(),
-              username: t.String(),
-              email: t.String(),
-            }),
-          }),
         }),
         401: t.Object({
           success: t.Boolean(),

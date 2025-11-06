@@ -1,5 +1,6 @@
 import { openapi } from '@elysiajs/openapi';
 import { env } from '@/shared/config/env';
+import * as z from 'zod';
 
 export const openApiPlugin = openapi({
   documentation: {
@@ -42,6 +43,9 @@ export const openApiPlugin = openapi({
         },
       },
     },
+  },
+  mapJsonSchema: {
+    zod: z.toJSONSchema,
   },
   path: '/swagger',
   specPath: '/swagger/json',
