@@ -32,8 +32,9 @@ export const authController = new Elysia({ prefix: '/api' })
           value: sessionId,
           httpOnly: true,
           path: '/',
-          sameSite: 'strict',
-          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          // secure: process.env.NODE_ENV === 'production',
+          secure: false,
           maxAge: 7 * 24 * 60 * 60,
         });
 
@@ -97,8 +98,9 @@ export const authController = new Elysia({ prefix: '/api' })
           value: sessionId,
           httpOnly: true,
           path: '/',
-          sameSite: 'strict',
-          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          // secure: process.env.NODE_ENV === 'production',
+          secure: false,
           maxAge: 7 * 24 * 60 * 60,
         });
 
@@ -145,8 +147,9 @@ export const authController = new Elysia({ prefix: '/api' })
         cookie.sessionId.value = '';
         cookie.sessionId.httpOnly = true;
         cookie.sessionId.path = '/';
-        cookie.sessionId.sameSite = 'strict';
-        cookie.sessionId.secure = process.env.NODE_ENV === 'production';
+        cookie.sessionId.sameSite = 'lax';
+        // cookie.sessionId.secure = process.env.NODE_ENV === 'production';
+        cookie.sessionId.secure = false;
         cookie.sessionId.expires = new Date(0);
 
         set.status = 200;
