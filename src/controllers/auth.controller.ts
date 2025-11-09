@@ -335,8 +335,7 @@ export const authController = new Elysia({ prefix: '/auth' })
     '/me',
     async ({ cookie, set }) => {
       try {
-        const accessToken =
-          cookie.accessToken?.value || cookie.sessionId?.value;
+        const accessToken = cookie.accessToken?.value;
         const refreshToken = cookie.refreshToken?.value;
 
         const accessVerification = await AuthUtils.verifyAccessToken(

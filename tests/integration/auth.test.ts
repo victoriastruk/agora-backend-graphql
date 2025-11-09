@@ -248,13 +248,16 @@ describe('Auth Routes Integration Tests', () => {
       });
 
       const data = await testUtils.parseResponse(response);
-      const cookie = testUtils.getCookie(response, 'sessionId');
+      const accessToken = testUtils.getCookie(response, 'accessToken');
+      const refreshToken = testUtils.getCookie(response, 'refreshToken');
 
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
       expect(data.message).toBe('Login successful');
-      expect(cookie).toBeDefined();
-      expect(cookie).not.toBe('');
+      expect(accessToken).toBeDefined();
+      expect(accessToken).not.toBe('');
+      expect(refreshToken).toBeDefined();
+      expect(refreshToken).not.toBe('');
     });
 
     it('should login successfully with email', async () => {
@@ -272,11 +275,13 @@ describe('Auth Routes Integration Tests', () => {
       });
 
       const data = await testUtils.parseResponse(response);
-      const cookie = testUtils.getCookie(response, 'sessionId');
+      const accessToken = testUtils.getCookie(response, 'accessToken');
+      const refreshToken = testUtils.getCookie(response, 'refreshToken');
 
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
-      expect(cookie).toBeDefined();
+      expect(accessToken).toBeDefined();
+      expect(refreshToken).toBeDefined();
     });
 
     it('should reject invalid credentials (wrong password)', async () => {
@@ -356,12 +361,14 @@ describe('Auth Routes Integration Tests', () => {
         password,
       });
 
-      const sessionId = testUtils.getCookie(loginResponse, 'sessionId');
-      expect(sessionId).toBeDefined();
+      const accessToken = testUtils.getCookie(loginResponse, 'accessToken');
+      const refreshToken = testUtils.getCookie(loginResponse, 'refreshToken');
+      expect(accessToken).toBeDefined();
+      expect(refreshToken).toBeDefined();
 
       const logoutResponse = await agent.post('/auth/logout', undefined, {
         headers: {
-          Cookie: `sessionId=${sessionId}`,
+          Cookie: `accessToken=${accessToken}; refreshToken=${refreshToken}`,
         },
       });
 
@@ -397,12 +404,12 @@ describe('Auth Routes Integration Tests', () => {
         password,
       });
 
-      const sessionId = testUtils.getCookie(loginResponse, 'sessionId');
-      expect(sessionId).toBeDefined();
+      const accessToken = testUtils.getCookie(loginResponse, 'accessToken');
+      expect(accessToken).toBeDefined();
 
       const meResponse = await agent.get('/auth/me', {
         headers: {
-          Cookie: `sessionId=${sessionId}`,
+          Cookie: `accessToken=${accessToken}`,
         },
       });
 
@@ -429,7 +436,7 @@ describe('Auth Routes Integration Tests', () => {
     it('should return 401 with invalid session', async () => {
       const response = await agent.get('/auth/me', {
         headers: {
-          Cookie: 'sessionId=invalid-session-id',
+          Cookie: 'accessToken=invalid-token',
         },
       });
 
@@ -454,13 +461,13 @@ describe('Auth Routes Integration Tests', () => {
         password,
       });
 
-      const sessionId = testUtils.getCookie(loginResponse, 'sessionId');
+      const accessToken = testUtils.getCookie(loginResponse, 'accessToken');
 
       mockRedis.expire.mockClear();
 
       await agent.get('/auth/me', {
         headers: {
-          Cookie: `sessionId=${sessionId}`,
+          Cookie: `accessToken=${accessToken}`,
         },
       });
 
