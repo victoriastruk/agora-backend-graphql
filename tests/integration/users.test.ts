@@ -165,13 +165,13 @@ describe('Users Routes Integration Tests', () => {
       const newUser = testUtils.generateTestUser({
         username: 'newuser',
         email: 'newuser@example.com',
-        passwordHash: 'plaintext_password',
+        passwordHash: 'SecurePass123!',
       });
 
       const response = await agent.post('/users', {
         username: newUser.username,
         email: newUser.email,
-        passwordHash: '',
+        password: newUser.password,
       });
       const data = await testUtils.parseResponse(response);
 
@@ -194,7 +194,7 @@ describe('Users Routes Integration Tests', () => {
       const response = await agent.post('/users', {
         username: newUser.username,
         email: newUser.email,
-        passwordHash: plainPassword,
+        password: plainPassword,
       });
 
       expect(response.status).toBe(201);
@@ -274,17 +274,17 @@ describe('Users Routes Integration Tests', () => {
       await agent.post('/users', {
         username: user1.username,
         email: user1.email,
-        passwordHash: 'password123',
+        password: 'password123',
       });
 
       const response = await agent.post('/users', {
         username: user1.username,
         email: 'user2@example.com',
-        passwordHash: 'password123',
+        password: 'password123',
       });
       const data = await testUtils.parseResponse(response);
 
-      expect(response.status).toBe(500);
+      expect(response.status).toBe(400);
       expect(data.message).toContain('Username already exists');
     });
 
@@ -297,17 +297,17 @@ describe('Users Routes Integration Tests', () => {
       await agent.post('/users', {
         username: user1.username,
         email: user1.email,
-        passwordHash: 'password123',
+        password: 'password123',
       });
 
       const response = await agent.post('/users', {
         username: 'user2',
         email: user1.email,
-        passwordHash: 'password123',
+        password: 'password123',
       });
       const data = await testUtils.parseResponse(response);
 
-      expect(response.status).toBe(500);
+      expect(response.status).toBe(400);
       expect(data.message).toContain('Email already exists');
     });
   });

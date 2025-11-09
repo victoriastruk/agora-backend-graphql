@@ -3,7 +3,7 @@ import { AuthUtils, type CookieStore } from '@/utils/auth';
 import { AuthQueries } from '@/db/queries/auth';
 import { ResponseUtils } from '@/utils/ResponseUtils';
 
-export const authController = new Elysia({ prefix: '/api' })
+export const authController = new Elysia({ prefix: '/auth' })
   .post(
     '/register',
     async ({ body, set, cookie }) => {
@@ -335,7 +335,8 @@ export const authController = new Elysia({ prefix: '/api' })
     '/me',
     async ({ cookie, set }) => {
       try {
-        const accessToken = cookie.accessToken?.value;
+        const accessToken =
+          cookie.accessToken?.value || cookie.sessionId?.value;
         const refreshToken = cookie.refreshToken?.value;
 
         const accessVerification = await AuthUtils.verifyAccessToken(

@@ -20,6 +20,7 @@ const envSchema = z.object({
   ACCESS_TTL_SEC: z.string().default('900').transform(Number),
   REFRESH_TTL_SEC: z.string().default('2592000').transform(Number),
   ROOM_TOKEN_TTL_SEC: z.string().default('120').transform(Number),
+  SESSION_TTL_SEC: z.string().default('2592000').transform(Number),
   CORS_ORIGIN: z.string().transform((val) => {
     return val.split(',').map((origin) => origin.trim());
   }),

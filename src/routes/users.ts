@@ -228,18 +228,13 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
     '/',
     async ({ body, set }) => {
       try {
-        const userData = body as NewUser;
+        const userData = body;
 
-        if (!userData.passwordHash) {
-          throw new Error('Password is required');
-        }
-
-        const passwordHash = await AuthUtils.hashPassword(
-          userData.passwordHash
-        );
+        const passwordHash = await AuthUtils.hashPassword(userData.password);
 
         const newUser: NewUser = {
-          ...userData,
+          username: userData.username,
+          email: userData.email,
           passwordHash,
         };
 
@@ -250,7 +245,11 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
           .limit(1);
 
         if (existingUser[0]) {
-          throw new Error('Username already exists');
+          set.status = 400;
+          return {
+            success: false,
+            message: 'Username already exists',
+          };
         }
 
         const existingEmail = await db
@@ -260,7 +259,11 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
           .limit(1);
 
         if (existingEmail[0]) {
-          throw new Error('Email already exists');
+          set.status = 400;
+          return {
+            success: false,
+            message: 'Email already exists',
+          };
         }
 
         const result = await db.insert(users).values(newUser).returning();
@@ -287,14 +290,14 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
       body: t.Object({
         username: t.String({ minLength: 3, maxLength: 50 }),
         email: t.String({ format: 'email' }),
-        passwordHash: t.String({ minLength: 8 }),
+        password: t.String({ minLength: 8 }),
       }),
       detail: {
         summary: 'Create a new user',
         description:
           'Creates a new user account. The password will be hashed before storage. Username and email must be unique.',
         tags: ['Users'],
-        hide: true, // Виключено з Swagger - використовуйте GraphQL
+        hide: true,
         responses: {
           201: {
             description: 'User created successfully',
@@ -448,7 +451,7 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
         description:
           'Updates user information (username and/or email). All fields are optional. Username and email must remain unique.',
         tags: ['Users'],
-        hide: true, // Виключено з Swagger - використовуйте GraphQL
+        hide: true,
         responses: {
           200: {
             description: 'User updated successfully',
@@ -581,7 +584,7 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
         description:
           'Permanently deletes a user from the system. Associated sessions will also be deleted due to cascading foreign key constraints.',
         tags: ['Users'],
-        hide: true, // Виключено з Swagger - використовуйте GraphQL
+        hide: true,
         responses: {
           200: {
             description: 'User deleted successfully',

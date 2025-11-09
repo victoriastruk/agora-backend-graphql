@@ -24,8 +24,7 @@ export const createTestApp = (config?: Partial<AppConfig>): Elysia => {
     if (testDb) {
       setDbInstance(testDb as any);
     }
-  } catch {
-  }
+  } catch {}
 
   const requestLogger = createRequestLogger({ logger: appConfig.logger });
   const app = new Elysia();
@@ -49,53 +48,63 @@ export const testUtils = {
 
     return {
       get: async (path: string, options?: RequestInit) => {
-        return app.handle(new Request(`${baseUrl}${path}`, {
-          method: 'GET',
-          ...options,
-        }));
+        return app.handle(
+          new Request(`${baseUrl}${path}`, {
+            method: 'GET',
+            ...options,
+          })
+        );
       },
 
       post: async (path: string, body?: any, options?: RequestInit) => {
-        return app.handle(new Request(`${baseUrl}${path}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...options?.headers,
-          },
-          body: body ? JSON.stringify(body) : undefined,
-          ...options,
-        }));
+        return app.handle(
+          new Request(`${baseUrl}${path}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...options?.headers,
+            },
+            body: body ? JSON.stringify(body) : undefined,
+            ...options,
+          })
+        );
       },
 
       put: async (path: string, body?: any, options?: RequestInit) => {
-        return app.handle(new Request(`${baseUrl}${path}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            ...options?.headers,
-          },
-          body: body ? JSON.stringify(body) : undefined,
-          ...options,
-        }));
+        return app.handle(
+          new Request(`${baseUrl}${path}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              ...options?.headers,
+            },
+            body: body ? JSON.stringify(body) : undefined,
+            ...options,
+          })
+        );
       },
 
       delete: async (path: string, options?: RequestInit) => {
-        return app.handle(new Request(`${baseUrl}${path}`, {
-          method: 'DELETE',
-          ...options,
-        }));
+        return app.handle(
+          new Request(`${baseUrl}${path}`, {
+            method: 'DELETE',
+            ...options,
+          })
+        );
       },
 
       patch: async (path: string, body?: any, options?: RequestInit) => {
-        return app.handle(new Request(`${baseUrl}${path}`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            ...options?.headers,
-          },
-          body: body ? JSON.stringify(body) : undefined,
-          ...options,
-        }));
+        return app.handle(
+          new Request(`${baseUrl}${path}`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              ...options?.headers,
+            },
+            body: body ? JSON.stringify(body) : undefined,
+            ...options,
+          })
+        );
       },
     };
   },
@@ -103,16 +112,22 @@ export const testUtils = {
   parseResponse: async (response: Response): Promise<any> => {
     const contentType = response.headers.get('content-type');
     const text = await response.text();
-    
+
     if (contentType?.includes('application/json')) {
       try {
         return JSON.parse(text);
-      } catch {
+      } catch (e) {
+        console.log('JSON parse error:', e, 'Text:', text);
         return text;
       }
     }
-    
-    return text;
+
+    // Try to parse as JSON even if content-type is not set
+    try {
+      return JSON.parse(text);
+    } catch {
+      return text;
+    }
   },
 
   generateTestUser: (overrides = {}) => ({
@@ -128,11 +143,11 @@ export const testUtils = {
     const setCookie = response.headers.get('set-cookie');
     if (!setCookie) return null;
 
-    const cookies = setCookie.split(',').map(c => c.trim());
-    const cookie = cookies.find(c => c.startsWith(`${cookieName}=`));
-    
+    const cookies = setCookie.split(',').map((c) => c.trim());
+    const cookie = cookies.find((c) => c.startsWith(`${cookieName}=`));
+
     if (!cookie) return null;
-    
+
     return cookie.split(';')[0].split('=')[1] || null;
   },
 };

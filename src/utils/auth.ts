@@ -265,6 +265,16 @@ export class AuthUtils {
       secure: env.NODE_ENV === 'production',
       maxAge: env.REFRESH_TTL_SEC,
     });
+
+    const sessionCookie = this.ensureCookieSlot(cookie, 'sessionId');
+    Object.assign(sessionCookie, {
+      value: tokens.accessToken,
+      httpOnly: true,
+      path: '/',
+      sameSite: 'lax' as const,
+      secure: env.NODE_ENV === 'production',
+      maxAge: env.ACCESS_TTL_SEC,
+    });
   }
 
   static clearAuthCookies(cookie: CookieStore): void {
@@ -280,6 +290,16 @@ export class AuthUtils {
 
     const refreshCookie = this.ensureCookieSlot(cookie, 'refreshToken');
     Object.assign(refreshCookie, {
+      value: '',
+      httpOnly: true,
+      path: '/',
+      sameSite: 'lax' as const,
+      secure: env.NODE_ENV === 'production',
+      expires: new Date(0),
+    });
+
+    const sessionCookie = this.ensureCookieSlot(cookie, 'sessionId');
+    Object.assign(sessionCookie, {
       value: '',
       httpOnly: true,
       path: '/',

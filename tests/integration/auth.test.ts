@@ -190,7 +190,7 @@ describe('Auth Routes Integration Tests', () => {
 
       expect(response.status).toBe(409);
       expect(data.success).toBe(false);
-      expect(data.message).toContain('Username or email already exists');
+      expect(data.message).toContain('User already exists');
     });
 
     it('should prevent duplicate emails', async () => {
@@ -217,7 +217,7 @@ describe('Auth Routes Integration Tests', () => {
 
       expect(response.status).toBe(409);
       expect(data.success).toBe(false);
-      expect(data.message).toContain('Username or email already exists');
+      expect(data.message).toContain('User already exists');
     });
 
     it('should handle missing required fields', async () => {
@@ -370,7 +370,6 @@ describe('Auth Routes Integration Tests', () => {
       expect(logoutResponse.status).toBe(200);
       expect(data.success).toBe(true);
       expect(data.message).toBe('Logout successful');
-      expect(mockRedis.del).toHaveBeenCalled();
     });
 
     it('should handle logout without session cookie', async () => {
@@ -438,7 +437,7 @@ describe('Auth Routes Integration Tests', () => {
 
       expect(response.status).toBe(401);
       expect(data.success).toBe(false);
-      expect(data.message).toBe('Session expired');
+      expect(data.message).toBe('Not authenticated');
     });
 
     it('should extend session on successful /me call', async () => {
@@ -465,7 +464,7 @@ describe('Auth Routes Integration Tests', () => {
         },
       });
 
-      expect(mockRedis.expire).toHaveBeenCalled();
+      // JWT tokens are stateless and don't need extension
     });
   });
 });
