@@ -63,6 +63,41 @@ Once running, the API will be available at:
 - **GraphQL Playground:** http://localhost:5555/graphql
 - **Health Check:** http://localhost:5555/health
 
+### GraphQL API
+
+**Основний API** - використовуйте GraphQL для всіх операцій (окрім автентифікації).
+
+- **Endpoint:** `POST /graphql`
+- **Playground:** `GET /graphql` (відкрийте в браузері)
+- **Документація:** [GRAPHQL_API.md](./GRAPHQL_API.md)
+
+GraphQL API включає:
+- ✅ Queries для читання даних
+- ✅ Mutations для зміни даних
+- ✅ Subscriptions для real-time оновлень
+- ✅ Повна підтримка Communities, Posts, Comments, Votes
+
+### REST API (Deprecated)
+
+⚠️ **REST endpoints застарілі** (окрім auth). Використовуйте GraphQL API.
+
+Auth endpoints залишаються REST:
+- `POST /auth/register` - Реєстрація
+- `POST /auth/login` - Вхід
+- `POST /auth/logout` - Вихід
+- `GET /auth/me` - Поточний користувач
+
+### 📚 Повна документація API
+
+**Детальна документація всіх endpoints**: [API_DOCUMENTATION.md](./API_DOCUMENTATION.md)
+
+Включає:
+- Повний опис всіх REST endpoints (deprecated)
+- Повний опис всіх GraphQL queries, mutations та subscriptions
+- Приклади запитів та відповідей
+- Опис параметрів та типів даних
+- Error handling та best practices
+
 ## 🗄️ Database
 
 - **PostgreSQL:** Container on port 5432

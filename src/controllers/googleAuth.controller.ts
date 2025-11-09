@@ -18,6 +18,16 @@ export const googleAuthController = new Elysia({ prefix: '/api/auth/google' })
     authUrl.searchParams.append('state', STATE);
 
     return redirect(authUrl.toString());
+  }, {
+    detail: {
+      tags: ['Authentication'],
+      summary: 'Initiate Google OAuth',
+      responses: {
+        302: {
+          description: 'Redirect to Google OAuth',
+        },
+      },
+    },
   })
 
   .get('/callback', async ({ query, cookie, set }) => {
@@ -83,4 +93,56 @@ export const googleAuthController = new Elysia({ prefix: '/api/auth/google' })
       set.status = 500;
       return ResponseUtils.error('Internal server error', 500);
     }
+  }, {
+    detail: {
+      tags: ['Authentication'],
+      summary: 'Google OAuth callback',
+      responses: {
+        302: {
+          description: 'Redirect to frontend with auth success',
+        },
+        400: {
+          description: 'Google auth failed or missing code',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: false },
+                  message: { type: 'string', example: 'Google auth failed' },
+                },
+              },
+            },
+          },
+        },
+        401: {
+          description: 'Invalid Google token exchange',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: false },
+                  message: { type: 'string', example: 'Invalid Google token exchange' },
+                },
+              },
+            },
+          },
+        },
+        500: {
+          description: 'Internal server error',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: false },
+                  message: { type: 'string', example: 'Internal server error' },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
   });

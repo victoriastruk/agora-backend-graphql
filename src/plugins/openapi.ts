@@ -3,12 +3,15 @@ import { env } from '@/shared/config/env';
 import * as z from 'zod';
 
 export const openApiPlugin = openapi({
+  exclude: {
+    paths: ['/graphql', '/graphiql'],
+  },
   documentation: {
     openapi: '3.0.0',
     info: {
-      title: 'Reddit Backend API',
+      title: 'Reddit Backend API - Authentication',
       description:
-        'Modern backend API built with Elysia.js, Drizzle ORM, and PostgreSQL. Provides user management, authentication, and health monitoring endpoints.',
+        'REST API для автентифікації користувачів.\n\n⚠️ **Note**: Всі інші endpoints доступні через GraphQL API. Використовуйте GraphiQL Playground на `/graphql` для GraphQL API документації.',
       version: '1.0.0',
       contact: {
         name: 'API Support',
@@ -27,7 +30,6 @@ export const openApiPlugin = openapi({
     tags: [
       { name: 'Health', description: 'Health check and API info' },
       { name: 'Authentication', description: 'User registration and login' },
-      { name: 'Users', description: 'User CRUD operations' },
     ],
     security: [
       {
@@ -47,6 +49,6 @@ export const openApiPlugin = openapi({
   mapJsonSchema: {
     zod: z.toJSONSchema,
   },
-  path: '/swagger',
-  specPath: '/swagger/json',
+  path: '/docs',
+  specPath: '/docs/json',
 });

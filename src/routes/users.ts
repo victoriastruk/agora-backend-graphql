@@ -7,14 +7,24 @@ import { AuthUtils } from '@/utils/auth';
 export const usersRoutes = new Elysia({ prefix: '/users' })
   .get(
     '/',
-    async () => {
+    async ({ query }) => {
       try {
-        const allUsers = await db.select().from(users);
+        const limit = Number(query?.limit) || 20;
+        const offset = Number(query?.offset) || 0;
+
+        const allUsers = await db
+          .select()
+          .from(users)
+          .limit(limit)
+          .offset(offset);
+
         const safeUsers = allUsers.map(({ passwordHash, ...user }) => user);
         return {
           success: true,
           data: safeUsers,
           count: safeUsers.length,
+          limit,
+          offset,
         };
       } catch (error) {
         if (error instanceof Error) {
@@ -35,11 +45,16 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
       }
     },
     {
+      query: t.Object({
+        limit: t.Optional(t.Number({ minimum: 1, maximum: 100, default: 20 })),
+        offset: t.Optional(t.Number({ minimum: 0, default: 0 })),
+      }),
       detail: {
         summary: 'Get all users',
         description:
-          'Retrieves a list of all users in the system. Password hashes are excluded from the response for security.',
+          'Retrieves a paginated list of all users in the system. Password hashes are excluded from the response for security.',
         tags: ['Users'],
+        hide: true, // Виключено з Swagger - використовуйте GraphQL
         responses: {
           200: {
             description: 'Successfully retrieved users',
@@ -65,6 +80,8 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
                       },
                     },
                     count: { type: 'integer', example: 10 },
+                    limit: { type: 'integer', example: 20 },
+                    offset: { type: 'integer', example: 0 },
                   },
                 },
               },
@@ -134,13 +151,14 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
     },
     {
       params: t.Object({
-        id: t.String({ description: 'User ID' }),
+        id: t.String(),
       }),
       detail: {
         summary: 'Get user by ID',
         description:
           'Retrieves a specific user by their unique identifier. Password hash is excluded from the response.',
         tags: ['Users'],
+        hide: true, // Виключено з Swagger - використовуйте GraphQL
         responses: {
           200: {
             description: 'Successfully retrieved user',
@@ -267,27 +285,16 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
     },
     {
       body: t.Object({
-        username: t.String({
-          minLength: 3,
-          maxLength: 50,
-          description: 'Unique username (3-50 characters)',
-          examples: ['john_doe'],
-        }),
-        email: t.String({
-          format: 'email',
-          description: 'Valid email address',
-          examples: ['john@example.com'],
-        }),
-        passwordHash: t.String({
-          minLength: 8,
-          description: 'Password hash (minimum 8 characters)',
-        }),
+        username: t.String({ minLength: 3, maxLength: 50 }),
+        email: t.String({ format: 'email' }),
+        passwordHash: t.String({ minLength: 8 }),
       }),
       detail: {
         summary: 'Create a new user',
         description:
           'Creates a new user account. The password will be hashed before storage. Username and email must be unique.',
         tags: ['Users'],
+        hide: true, // Виключено з Swagger - використовуйте GraphQL
         responses: {
           201: {
             description: 'User created successfully',
@@ -430,30 +437,18 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
     },
     {
       params: t.Object({
-        id: t.String({ description: 'User ID to update' }),
+        id: t.String(),
       }),
       body: t.Object({
-        username: t.Optional(
-          t.String({
-            minLength: 3,
-            maxLength: 50,
-            description: 'New username (3-50 characters)',
-            examples: ['john_doe_updated'],
-          })
-        ),
-        email: t.Optional(
-          t.String({
-            format: 'email',
-            description: 'New email address',
-            examples: ['john.updated@example.com'],
-          })
-        ),
+        username: t.Optional(t.String({ minLength: 3, maxLength: 50 })),
+        email: t.Optional(t.String({ format: 'email' })),
       }),
       detail: {
         summary: 'Update user information',
         description:
           'Updates user information (username and/or email). All fields are optional. Username and email must remain unique.',
         tags: ['Users'],
+        hide: true, // Виключено з Swagger - використовуйте GraphQL
         responses: {
           200: {
             description: 'User updated successfully',
@@ -579,13 +574,14 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
     },
     {
       params: t.Object({
-        id: t.String({ description: 'User ID to delete' }),
+        id: t.String(),
       }),
       detail: {
         summary: 'Delete a user',
         description:
           'Permanently deletes a user from the system. Associated sessions will also be deleted due to cascading foreign key constraints.',
         tags: ['Users'],
+        hide: true, // Виключено з Swagger - використовуйте GraphQL
         responses: {
           200: {
             description: 'User deleted successfully',

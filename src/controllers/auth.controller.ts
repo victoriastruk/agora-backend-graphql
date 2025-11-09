@@ -2,7 +2,6 @@ import { Elysia, t } from 'elysia';
 import { AuthUtils, type CookieStore } from '@/utils/auth';
 import { AuthQueries } from '@/db/queries/auth';
 import { ResponseUtils } from '@/utils/ResponseUtils';
-import { registerSchema, loginSchema } from '@/types/auth';
 
 export const authController = new Elysia({ prefix: '/api' })
   .post(
@@ -56,26 +55,99 @@ export const authController = new Elysia({ prefix: '/api' })
       }
     },
     {
-      body: registerSchema,
-      tags: ['Authentication'],
-      summary: 'Register and login user',
-      response: {
-        201: t.Object({
-          success: t.Boolean(),
-          message: t.String(),
+      body: t.Object({
+        username: t.String({
+          minLength: 3,
+          maxLength: 30,
+          pattern: '^[a-zA-Z0-9_]+$',
         }),
-        400: t.Object({
-          success: t.Boolean(),
-          message: t.String(),
-        }),
-        409: t.Object({
-          success: t.Boolean(),
-          message: t.String(),
-        }),
-        500: t.Object({
-          success: t.Boolean(),
-          message: t.String(),
-        }),
+        email: t.String({ format: 'email' }),
+        password: t.String({ minLength: 6 }),
+      }),
+      detail: {
+        tags: ['Authentication'],
+        summary: 'Register and login user',
+        responses: {
+          201: {
+            description: 'User registered successfully',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: true },
+                    message: {
+                      type: 'string',
+                      example: 'User registered successfully',
+                    },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        user: {
+                          type: 'object',
+                          properties: {
+                            id: { type: 'integer', example: 1 },
+                            username: { type: 'string', example: 'john_doe' },
+                            email: {
+                              type: 'string',
+                              example: 'john@example.com',
+                            },
+                            createdAt: { type: 'string', format: 'date-time' },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          400: {
+            description: 'Invalid input data',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: false },
+                    message: { type: 'string', example: 'Invalid input data' },
+                  },
+                },
+              },
+            },
+          },
+          409: {
+            description: 'User already exists',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: false },
+                    message: { type: 'string', example: 'User already exists' },
+                  },
+                },
+              },
+            },
+          },
+          500: {
+            description: 'Internal server error',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: false },
+                    message: {
+                      type: 'string',
+                      example: 'Internal server error',
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
       },
     }
   )
@@ -117,23 +189,77 @@ export const authController = new Elysia({ prefix: '/api' })
       }
     },
     {
-      body: loginSchema,
-      tags: ['Authentication'],
-      summary: 'Login user',
-
-      response: {
-        200: t.Object({
-          success: t.Boolean(),
-          message: t.String(),
-        }),
-        401: t.Object({
-          success: t.Boolean(),
-          message: t.String(),
-        }),
-        500: t.Object({
-          success: t.Boolean(),
-          message: t.String(),
-        }),
+      body: t.Object({
+        usernameOrEmail: t.String({ minLength: 3 }),
+        password: t.String({ minLength: 6 }),
+      }),
+      detail: {
+        tags: ['Authentication'],
+        summary: 'Login user',
+        responses: {
+          200: {
+            description: 'Login successful',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: true },
+                    message: { type: 'string', example: 'Login successful' },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        user: {
+                          type: 'object',
+                          properties: {
+                            id: { type: 'integer', example: 1 },
+                            username: { type: 'string', example: 'john_doe' },
+                            email: {
+                              type: 'string',
+                              example: 'john@example.com',
+                            },
+                            createdAt: { type: 'string', format: 'date-time' },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          401: {
+            description: 'Invalid credentials',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: false },
+                    message: { type: 'string', example: 'Invalid credentials' },
+                  },
+                },
+              },
+            },
+          },
+          500: {
+            description: 'Internal server error',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: false },
+                    message: {
+                      type: 'string',
+                      example: 'Internal server error',
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
       },
     }
   )
@@ -165,17 +291,42 @@ export const authController = new Elysia({ prefix: '/api' })
       }
     },
     {
-      tags: ['Authentication'],
-      summary: 'Logout user',
-      response: {
-        200: t.Object({
-          success: t.Boolean(),
-          message: t.String(),
-        }),
-        500: t.Object({
-          success: t.Boolean(),
-          message: t.String(),
-        }),
+      detail: {
+        tags: ['Authentication'],
+        summary: 'Logout user',
+        responses: {
+          200: {
+            description: 'Logout successful',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: true },
+                    message: { type: 'string', example: 'Logout successful' },
+                  },
+                },
+              },
+            },
+          },
+          500: {
+            description: 'Internal server error',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: false },
+                    message: {
+                      type: 'string',
+                      example: 'Internal server error',
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
       },
     }
   )
@@ -260,29 +411,73 @@ export const authController = new Elysia({ prefix: '/api' })
       }
     },
     {
-      tags: ['Authentication'],
-      summary: 'Get current user',
-      response: {
-        200: t.Object({
-          success: t.Boolean(),
-          message: t.String(),
-          data: t.Object({
-            user: t.Object({
-              id: t.Number(),
-              username: t.String(),
-              email: t.String(),
-              createdAt: t.Optional(t.String({ format: 'date-time' })),
-            }),
-          }),
-        }),
-        401: t.Object({
-          success: t.Boolean(),
-          message: t.String(),
-        }),
-        500: t.Object({
-          success: t.Boolean(),
-          message: t.String(),
-        }),
+      detail: {
+        tags: ['Authentication'],
+        summary: 'Get current user',
+        responses: {
+          200: {
+            description: 'User authenticated',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: true },
+                    message: { type: 'string', example: 'User authenticated' },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        user: {
+                          type: 'object',
+                          properties: {
+                            id: { type: 'integer', example: 1 },
+                            username: { type: 'string', example: 'john_doe' },
+                            email: {
+                              type: 'string',
+                              example: 'john@example.com',
+                            },
+                            createdAt: { type: 'string', format: 'date-time' },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          401: {
+            description: 'Not authenticated',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: false },
+                    message: { type: 'string', example: 'Not authenticated' },
+                  },
+                },
+              },
+            },
+          },
+          500: {
+            description: 'Internal server error',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: false },
+                    message: {
+                      type: 'string',
+                      example: 'Internal server error',
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
       },
     }
   );

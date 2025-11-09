@@ -132,6 +132,10 @@ export const healthRoutes = new Elysia()
       error: 'Method Not Allowed',
       message: 'Only GET method is allowed for this endpoint',
     };
+  }, {
+    detail: {
+      hide: true, // Виключаємо з OpenAPI документації
+    },
   })
   .all(ROUTES.ROOT, ({ request, set }) => {
     if (request.method === 'GET') {
@@ -143,4 +147,8 @@ export const healthRoutes = new Elysia()
       error: 'Method Not Allowed',
       message: 'Only GET method is allowed for this endpoint',
     };
+  }, {
+    detail: {
+      hide: true, // Виключаємо з OpenAPI документації
+    },
   });

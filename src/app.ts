@@ -31,16 +31,20 @@ class Application {
       .use(errorPlugin)
       .use(corsPlugin)
       .use(openApiPlugin)
-      .use(yogaPlugin)
       .use(healthRoutes)
       .use(authController)
       .use(googleAuthController)
-      .use(routes[0])
-      .onStop(() => {
-        this.config.logger.logServerShutdown();
-        closeDbConnection();
-        closeRedisConnection();
-      });
+      .use(yogaPlugin); 
+
+    routes.forEach((route) => {
+      app.use(route);
+    });
+
+    app.onStop(() => {
+      this.config.logger.logServerShutdown();
+      closeDbConnection();
+      closeRedisConnection();
+    });
 
     return app;
   }
