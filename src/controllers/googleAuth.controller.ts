@@ -1,5 +1,5 @@
 import { Elysia, t } from 'elysia';
-import { AuthUtils } from '@/utils/auth';
+import { AuthUtils, type CookieStore } from '@/utils/auth';
 import { AuthQueries } from '@/db/queries/auth';
 import { ResponseUtils } from '@/utils/ResponseUtils';
 
@@ -51,9 +51,12 @@ export const googleAuthController = new Elysia({ prefix: '/api/auth/google' })
         return ResponseUtils.error('Invalid Google token exchange', 401);
       }
 
-      const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-        headers: { Authorization: `Bearer ${tokenData.access_token}` },
-      });
+      const userInfoRes = await fetch(
+        'https://www.googleapis.com/oauth2/v2/userinfo',
+        {
+          headers: { Authorization: `Bearer ${tokenData.access_token}` },
+        }
+      );
 
       const googleUser = await userInfoRes.json();
       if (!googleUser.email) {
@@ -70,15 +73,8 @@ export const googleAuthController = new Elysia({ prefix: '/api/auth/google' })
         });
       }
 
-      const sessionId = await AuthUtils.createSession(user.id);
-      Object.assign(cookie['sessionId'], {
-        value: sessionId,
-        httpOnly: true,
-        path: '/',
-        sameSite: 'strict',
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 7 * 24 * 60 * 60,
-      });
+      const session = await AuthUtils.createAuthSession(user);
+      AuthUtils.applyAuthCookies(cookie as CookieStore, session.tokens);
 
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
       return Response.redirect(`${frontendUrl}?auth=success`);

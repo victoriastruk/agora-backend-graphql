@@ -1,46 +1,71 @@
 import { Elysia } from 'elysia';
-import { AuthUtils } from '@/utils/auth';
+import { AuthUtils, type CookieStore } from '@/utils/auth';
 import { AuthQueries } from '@/db/queries/auth';
 
 export const authMiddleware = new Elysia().derive(async ({ cookie, set }) => {
-  const sessionId = cookie.sessionId?.value;
+  const cookieStore = cookie as CookieStore;
+  const accessToken =
+    typeof cookieStore.accessToken?.value === 'string'
+      ? cookieStore.accessToken.value
+      : undefined;
+  const refreshToken =
+    typeof cookieStore.refreshToken?.value === 'string'
+      ? cookieStore.refreshToken.value
+      : undefined;
 
-  if (!sessionId || typeof sessionId !== 'string') {
+  const accessVerification = await AuthUtils.verifyAccessToken(accessToken);
+
+  if (accessVerification.status === 'invalid') {
     return {
       user: null,
-      sessionId: null,
     };
   }
 
-  const session = await AuthUtils.getSession(sessionId);
+  let userId: number | null = null;
+  let refreshTokenIdToRevoke: string | undefined;
 
-  if (!session) {
-    cookie.sessionId.value = '';
-    cookie.sessionId.expires = new Date(0);
+  if (accessVerification.status === 'valid' && accessVerification.payload) {
+    userId = Number(accessVerification.payload.sub);
+  } else if (accessVerification.status === 'expired' && refreshToken) {
+    const refreshVerification =
+      await AuthUtils.verifyRefreshToken(refreshToken);
 
+    if (refreshVerification.status === 'valid' && refreshVerification.payload) {
+      userId = Number(refreshVerification.payload.sub);
+      refreshTokenIdToRevoke = refreshVerification.payload.jti;
+    } else {
+      AuthUtils.clearAuthCookies(cookieStore);
+      return {
+        user: null,
+      };
+    }
+  }
+
+  if (!userId) {
     return {
       user: null,
-      sessionId: null,
     };
   }
 
-  const user = await AuthQueries.findUserById(session.userId);
+  const user = await AuthQueries.findUserById(userId);
 
   if (!user) {
+    AuthUtils.clearAuthCookies(cookieStore);
     return {
       user: null,
-      sessionId: null,
     };
   }
 
-  if (typeof sessionId === 'string') {
-    await AuthUtils.extendSession(sessionId);
+  if (refreshTokenIdToRevoke) {
+    const session = await AuthUtils.createAuthSession(user, {
+      previousRefreshTokenId: refreshTokenIdToRevoke,
+    });
+    AuthUtils.applyAuthCookies(cookieStore, session.tokens);
   }
 
   const { passwordHash: _, ...safeUser } = user;
 
   return {
     user: safeUser,
-    sessionId,
   };
 });

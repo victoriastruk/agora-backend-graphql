@@ -1,5 +1,5 @@
 import { Elysia, t } from 'elysia';
-import { AuthUtils } from '@/utils/auth';
+import { AuthUtils, type CookieStore } from '@/utils/auth';
 import { AuthQueries } from '@/db/queries/auth';
 import { ResponseUtils } from '@/utils/ResponseUtils';
 import { registerSchema, loginSchema } from '@/types/auth';
@@ -27,19 +27,21 @@ export const authController = new Elysia({ prefix: '/api' })
           passwordHash,
         });
 
-        const sessionId = await AuthUtils.createSession(newUser.id);
-        Object.assign(cookie['sessionId'], {
-          value: sessionId,
-          httpOnly: true,
-          path: '/',
-          sameSite: 'lax',
-          // secure: process.env.NODE_ENV === 'production',
-          secure: false,
-          maxAge: 7 * 24 * 60 * 60,
-        });
+        const session = await AuthUtils.createAuthSession(newUser);
+        AuthUtils.applyAuthCookies(cookie as CookieStore, session.tokens);
+
+        const { passwordHash: _, ...userResponse } = newUser;
+        const formattedUser = {
+          ...userResponse,
+          createdAt: userResponse.createdAt
+            ? new Date(userResponse.createdAt).toISOString()
+            : undefined,
+        };
 
         set.status = 201;
-        return ResponseUtils.success('User registered and logged in', 201);
+        return ResponseUtils.success('User registered successfully', {
+          user: formattedUser,
+        });
       } catch (error) {
         const err = error as Error;
         console.error('Registration error:', err);
@@ -93,19 +95,21 @@ export const authController = new Elysia({ prefix: '/api' })
           return ResponseUtils.error('Invalid credentials', 401);
         }
 
-        const sessionId = await AuthUtils.createSession(user.id);
-        Object.assign(cookie['sessionId'], {
-          value: sessionId,
-          httpOnly: true,
-          path: '/',
-          sameSite: 'lax',
-          // secure: process.env.NODE_ENV === 'production',
-          secure: false,
-          maxAge: 7 * 24 * 60 * 60,
-        });
+        const session = await AuthUtils.createAuthSession(user);
+        AuthUtils.applyAuthCookies(cookie as CookieStore, session.tokens);
+
+        const { passwordHash: _, ...userResponse } = user;
+        const formattedUser = {
+          ...userResponse,
+          createdAt: userResponse.createdAt
+            ? new Date(userResponse.createdAt).toISOString()
+            : undefined,
+        };
 
         set.status = 200;
-        return ResponseUtils.success('Login successful', 200);
+        return ResponseUtils.success('Login successful', {
+          user: formattedUser,
+        });
       } catch (error) {
         console.error('Login error:', error);
         set.status = 500;
@@ -138,19 +142,13 @@ export const authController = new Elysia({ prefix: '/api' })
     '/logout',
     async ({ cookie, set }) => {
       try {
-        const sessionId = cookie.sessionId?.value;
+        const refreshToken = cookie.refreshToken?.value;
 
-        if (sessionId && typeof sessionId === 'string') {
-          await AuthUtils.destroySession(sessionId);
+        if (refreshToken && typeof refreshToken === 'string') {
+          await AuthUtils.revokeRefreshTokenByToken(refreshToken);
         }
 
-        cookie.sessionId.value = '';
-        cookie.sessionId.httpOnly = true;
-        cookie.sessionId.path = '/';
-        cookie.sessionId.sameSite = 'lax';
-        // cookie.sessionId.secure = process.env.NODE_ENV === 'production';
-        cookie.sessionId.secure = false;
-        cookie.sessionId.expires = new Date(0);
+        AuthUtils.clearAuthCookies(cookie as CookieStore);
 
         set.status = 200;
         return {
@@ -186,36 +184,59 @@ export const authController = new Elysia({ prefix: '/api' })
     '/me',
     async ({ cookie, set }) => {
       try {
-        const sessionId = cookie.sessionId?.value;
+        const accessToken = cookie.accessToken?.value;
+        const refreshToken = cookie.refreshToken?.value;
 
-        if (!sessionId || typeof sessionId !== 'string') {
+        const accessVerification = await AuthUtils.verifyAccessToken(
+          typeof accessToken === 'string' ? accessToken : undefined
+        );
+
+        let userId: number | null = null;
+        let refreshTokenIdToRevoke: string | undefined;
+
+        if (
+          accessVerification.status === 'valid' &&
+          accessVerification.payload
+        ) {
+          userId = Number(accessVerification.payload.sub);
+        } else if (
+          accessVerification.status === 'expired' &&
+          refreshToken &&
+          typeof refreshToken === 'string'
+        ) {
+          const refreshVerification =
+            await AuthUtils.verifyRefreshToken(refreshToken);
+
+          if (
+            refreshVerification.status === 'valid' &&
+            refreshVerification.payload
+          ) {
+            userId = Number(refreshVerification.payload.sub);
+            refreshTokenIdToRevoke = refreshVerification.payload.jti;
+          } else {
+            AuthUtils.clearAuthCookies(cookie as CookieStore);
+            set.status = 401;
+            return ResponseUtils.error('Session expired', 401);
+          }
+        } else {
+          AuthUtils.clearAuthCookies(cookie as CookieStore);
           set.status = 401;
-          return {
-            success: false,
-            message: 'Not authenticated',
-            data: null,
-          };
+          return ResponseUtils.error('Not authenticated', 401);
         }
 
-        const session = await AuthUtils.getSession(sessionId);
-
-        if (!session) {
-          cookie.sessionId.value = '';
-          cookie.sessionId.expires = new Date(0);
-
-          set.status = 401;
-          return ResponseUtils.error('Session expired', 401);
-        }
-
-        const user = await AuthQueries.findUserById(session.userId);
+        const user = userId ? await AuthQueries.findUserById(userId) : null;
 
         if (!user) {
+          AuthUtils.clearAuthCookies(cookie as CookieStore);
           set.status = 401;
           return ResponseUtils.error('User not found', 401);
         }
 
-        if (typeof sessionId === 'string') {
-          await AuthUtils.extendSession(sessionId);
+        if (refreshTokenIdToRevoke) {
+          const session = await AuthUtils.createAuthSession(user, {
+            previousRefreshTokenId: refreshTokenIdToRevoke,
+          });
+          AuthUtils.applyAuthCookies(cookie as CookieStore, session.tokens);
         }
 
         const { passwordHash: _, ...userResponse } = user;
