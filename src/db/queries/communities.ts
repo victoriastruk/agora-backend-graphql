@@ -1,14 +1,14 @@
-import { eq, desc, sql, and } from 'drizzle-orm';
+import { eq, desc, sql, and, like, or } from 'drizzle-orm';
 import { db } from '@/db/client';
 import {
   communities,
   communityMembers,
-  posts,
+  communityModerators,
   users,
   type Community,
   type NewCommunity,
   type CommunityMember,
-  type NewCommunityMember,
+  type CommunityModerator,
   type User,
 } from '@/db/schema';
 
@@ -88,7 +88,6 @@ export const communityQueries = {
   },
 
   async join(userId: number, communityId: number): Promise<CommunityMember> {
-    // Check if already a member
     const existing = await this.isMember(userId, communityId);
     if (existing) {
       const result = await db
@@ -104,7 +103,6 @@ export const communityQueries = {
       return result[0];
     }
 
-    // Add member and increment member count
     const member = await db
       .insert(communityMembers)
       .values({ userId, communityId })
@@ -174,5 +172,143 @@ export const communityQueries = {
       .offset(offset);
 
     return result;
+  },
+
+  async search(query: string, limit = 20, offset = 0): Promise<Community[]> {
+    const searchPattern = `%${query}%`;
+    return await db
+      .select()
+      .from(communities)
+      .where(
+        or(
+          like(communities.name, searchPattern),
+          like(communities.displayName, searchPattern)
+        )
+      )
+      .orderBy(desc(communities.memberCount))
+      .limit(limit)
+      .offset(offset);
+  },
+
+  async isModerator(userId: number, communityId: number): Promise<boolean> {
+    const result = await db
+      .select()
+      .from(communityModerators)
+      .where(
+        and(
+          eq(communityModerators.userId, userId),
+          eq(communityModerators.communityId, communityId)
+        )
+      )
+      .limit(1);
+    return result.length > 0;
+  },
+
+  async isOwner(userId: number, communityId: number): Promise<boolean> {
+    const result = await db
+      .select()
+      .from(communityModerators)
+      .where(
+        and(
+          eq(communityModerators.userId, userId),
+          eq(communityModerators.communityId, communityId),
+          eq(communityModerators.role, 'owner')
+        )
+      )
+      .limit(1);
+    return result.length > 0;
+  },
+
+  async getModeratorRole(
+    userId: number,
+    communityId: number
+  ): Promise<'owner' | 'moderator' | null> {
+    const result = await db
+      .select({ role: communityModerators.role })
+      .from(communityModerators)
+      .where(
+        and(
+          eq(communityModerators.userId, userId),
+          eq(communityModerators.communityId, communityId)
+        )
+      )
+      .limit(1);
+    return result[0]?.role || null;
+  },
+
+  async addModerator(
+    communityId: number,
+    userId: number,
+    role: 'owner' | 'moderator' = 'moderator'
+  ): Promise<CommunityModerator> {
+    const existing = await db
+      .select()
+      .from(communityModerators)
+      .where(
+        and(
+          eq(communityModerators.userId, userId),
+          eq(communityModerators.communityId, communityId)
+        )
+      )
+      .limit(1);
+
+    if (existing.length > 0) {
+      // Update role if already exists
+      const updated = await db
+        .update(communityModerators)
+        .set({ role })
+        .where(eq(communityModerators.id, existing[0].id))
+        .returning();
+      return updated[0];
+    }
+
+    const result = await db
+      .insert(communityModerators)
+      .values({ communityId, userId, role })
+      .returning();
+    return result[0];
+  },
+
+  async removeModerator(communityId: number, userId: number): Promise<boolean> {
+    const result = await db
+      .delete(communityModerators)
+      .where(
+        and(
+          eq(communityModerators.userId, userId),
+          eq(communityModerators.communityId, communityId)
+        )
+      )
+      .returning();
+    return result.length > 0;
+  },
+
+  async getModerators(communityId: number): Promise<
+    Array<{
+      id: number;
+      username: string;
+      email: string;
+      role: 'owner' | 'moderator';
+    }>
+  > {
+    const result = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        email: users.email,
+        role: communityModerators.role,
+      })
+      .from(communityModerators)
+      .innerJoin(users, eq(communityModerators.userId, users.id))
+      .where(eq(communityModerators.communityId, communityId))
+      .orderBy(communityModerators.createdAt);
+    return result;
+  },
+
+  async delete(id: number): Promise<boolean> {
+    const result = await db
+      .delete(communities)
+      .where(eq(communities.id, id))
+      .returning();
+    return result.length > 0;
   },
 };

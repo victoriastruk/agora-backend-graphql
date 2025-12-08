@@ -72,26 +72,35 @@ Once running, the API will be available at:
 - **Документація:** [GRAPHQL_API.md](./GRAPHQL_API.md)
 
 GraphQL API включає:
+
 - ✅ Queries для читання даних
 - ✅ Mutations для зміни даних
 - ✅ Subscriptions для real-time оновлень
 - ✅ Повна підтримка Communities, Posts, Comments, Votes
 
-### REST API (Deprecated)
+### REST API (Authentication Only)
 
-⚠️ **REST endpoints застарілі** (окрім auth). Використовуйте GraphQL API.
+⚠️ **Тільки auth endpoints залишились на REST**. Всі інші операції через GraphQL API.
 
-Auth endpoints залишаються REST:
-- `POST /auth/register` - Реєстрація
-- `POST /auth/login` - Вхід
-- `POST /auth/logout` - Вихід
-- `GET /auth/me` - Поточний користувач
+Auth endpoints:
+
+- `POST /auth/register` - Реєстрація користувача
+- `POST /auth/login` - Вхід користувача
+- `POST /auth/logout` - Вихід користувача
+- `GET /auth/me` - Інформація про поточного користувача
+- `GET /api/auth/google` - Google OAuth ініціація
+- `GET /api/auth/google/callback` - Google OAuth callback
+
+Health check:
+
+- `GET /health` - Перевірка стану сервера
 
 ### 📚 Повна документація API
 
 **Детальна документація всіх endpoints**: [API_DOCUMENTATION.md](./API_DOCUMENTATION.md)
 
 Включає:
+
 - Повний опис всіх REST endpoints (deprecated)
 - Повний опис всіх GraphQL queries, mutations та subscriptions
 - Приклади запитів та відповідей

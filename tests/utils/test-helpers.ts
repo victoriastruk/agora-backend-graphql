@@ -1,10 +1,9 @@
 import { Elysia } from 'elysia';
 import { corsPlugin } from '@/plugins/cors';
-// import { swaggerPlugin } from '@/plugins/swagger';
 import { yogaPlugin } from '@/plugins/yoga';
 import { errorPlugin } from '@/plugins/error';
 import { createRequestLogger } from '@/plugins/request-logger';
-import { routes } from '@/routes';
+import { googleAuthController } from '@/controllers/googleAuth.controller';
 import { authController } from '@/controllers/auth.controller';
 import { healthRoutes } from '@/routes/health';
 import { logger } from '@/utils/logger';
@@ -33,11 +32,10 @@ export const createTestApp = (config?: Partial<AppConfig>): Elysia => {
     .use(requestLogger)
     .use(errorPlugin)
     .use(corsPlugin)
-    // .use(swaggerPlugin)
     .use(yogaPlugin)
     .use(healthRoutes)
     .use(authController)
-    .use(routes[0]);
+    .use(googleAuthController);
 
   return app;
 };
@@ -139,6 +137,15 @@ export const testUtils = {
 
   wait: (ms: number) => new Promise((resolve) => setTimeout(resolve, ms)),
 
+  parseGraphQLResponse: async (response: Response) => {
+    const result = await testUtils.parseResponse(response);
+    return {
+      data: result.data,
+      errors: result.errors,
+      extensions: result.extensions,
+    };
+  },
+
   getCookie: (response: Response, cookieName: string): string | null => {
     const setCookie = response.headers.get('set-cookie');
     if (!setCookie) return null;
@@ -150,6 +157,67 @@ export const testUtils = {
 
     return cookie.split(';')[0].split('=')[1] || null;
   },
+
+  graphql: (app: Elysia) => ({
+    query: async (
+      query: string,
+      variables?: Record<string, any>,
+      authToken?: string
+    ) => {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      if (authToken) {
+        headers.Authorization = `Bearer ${authToken}`;
+      }
+
+      return app.handle(
+        new Request('http://localhost/graphql', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            query,
+            variables: variables || {},
+          }),
+        })
+      );
+    },
+
+    mutation: async (
+      mutation: string,
+      variables?: Record<string, any>,
+      authToken?: string
+    ) => {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      if (authToken) {
+        headers.Authorization = `Bearer ${authToken}`;
+      }
+
+      return app.handle(
+        new Request('http://localhost/graphql', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            query: mutation,
+            variables: variables || {},
+          }),
+        })
+      );
+    },
+
+    parseGraphQLResponse: async (response: Response) => {
+      const result = await testUtils.parseResponse(response);
+      return {
+        data: result.data,
+        errors: result.errors,
+        extensions: result.extensions,
+      };
+    },
+  }),
 };
 
 export const mockTemplates = {

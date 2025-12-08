@@ -12,10 +12,18 @@ const typeDefs = `
     id: ID!
     """Username (unique, 3-50 characters)"""
     username: String!
-    """Full name for Google auth users"""
-    name: String!
+    """Full name for Google auth users (optional)"""
+    name: String
     """Email address (unique)"""
     email: String!
+    """User bio"""
+    bio: String
+    """User avatar URL"""
+    avatarUrl: String
+    """Posts by this user"""
+    posts(limit: Int = 20, offset: Int = 0): [Post!]!
+    """Comments by this user"""
+    comments(limit: Int = 20, offset: Int = 0): [Comment!]!
     """Account creation timestamp"""
     createdAt: DateTime!
   }
@@ -36,16 +44,32 @@ const typeDefs = `
     iconUrl: String
     """Community banner URL"""
     bannerUrl: String
+    """Community creator"""
+    creator: User
     """Number of members"""
     memberCount: Int!
     """List of community members (first 50)"""
     members(limit: Int = 50, offset: Int = 0): [User!]!
+    """List of community moderators"""
+    moderators: [Moderator!]!
     """Community creation timestamp"""
     createdAt: DateTime!
     """Last update timestamp"""
     updatedAt: DateTime!
     """Whether the authenticated user has joined this community"""
     isJoined: Boolean
+    """Whether the authenticated user is a moderator of this community"""
+    isModerator: Boolean
+  }
+
+  """
+  Represents a moderator of a community
+  """
+  type Moderator {
+    """User information"""
+    user: User!
+    """Role: owner or moderator"""
+    role: String!
   }
 
   """
@@ -119,6 +143,59 @@ const typeDefs = `
   }
 
   """
+  Report reason enumeration
+  """
+  enum ReportReason {
+    spam
+    harassment
+    hate_speech
+    violence
+    inappropriate_content
+    copyright_violation
+    other
+  }
+
+  """
+  Represents a report on a post or comment
+  """
+  type Report {
+    """Unique identifier for the report"""
+    id: ID!
+    """User who submitted the report"""
+    reporter: User!
+    """Post being reported (null if reporting a comment)"""
+    post: Post
+    """Comment being reported (null if reporting a post)"""
+    comment: Comment
+    """Reason for the report"""
+    reason: ReportReason!
+    """Additional description"""
+    description: String
+    """Report status"""
+    status: String!
+    """Report creation timestamp"""
+    createdAt: DateTime!
+    """Report resolution timestamp"""
+    resolvedAt: DateTime
+    """User who resolved the report"""
+    resolvedBy: User
+  }
+
+  """
+  Input for creating a report
+  """
+  input CreateReportInput {
+    """Post ID to report (optional if reporting a comment)"""
+    postId: ID
+    """Comment ID to report (optional if reporting a post)"""
+    commentId: ID
+    """Reason for the report"""
+    reason: ReportReason!
+    """Additional description"""
+    description: String
+  }
+
+  """
   Represents a comment on a post
   """
   type Comment {
@@ -187,22 +264,6 @@ const typeDefs = `
   }
 
   """
-  Sort order for posts (alias for SortType for backward compatibility)
-  """
-  enum PostSort {
-    """Best posts (score + comments weighted)"""
-    best
-    """Hot posts (score weighted by time)"""
-    hot
-    """Newest posts"""
-    new
-    """Rising posts (recent high-scoring)"""
-    rising
-    """Top posts (highest score)"""
-    top
-  }
-
-  """
   Geographic region for content filtering
   """
   enum Region {
@@ -241,6 +302,18 @@ const typeDefs = `
   }
 
   """
+  Input for updating a post
+  """
+  input UpdatePostInput {
+    """New post title (max 300 characters)"""
+    title: String
+    """New post content/body"""
+    content: String
+    """New flair IDs to attach"""
+    flairIds: [ID!]
+  }
+
+  """
   Input for post media
   """
   input PostMediaInput {
@@ -254,6 +327,62 @@ const typeDefs = `
     width: Int
     """Media height in pixels"""
     height: Int
+  }
+
+  """
+  Input for creating a new community
+  """
+  input CreateCommunityInput {
+    """URL-friendly name (e.g., 'programming')"""
+    name: String!
+    """Display name (e.g., 'Programming')"""
+    displayName: String!
+    """Community description"""
+    description: String
+    """Community icon URL"""
+    iconUrl: String
+    """Community banner URL"""
+    bannerUrl: String
+  }
+
+  """
+  Input for updating a community
+  """
+  input UpdateCommunityInput {
+    """New display name"""
+    displayName: String
+    """New description"""
+    description: String
+    """New icon URL"""
+    iconUrl: String
+    """New banner URL"""
+    bannerUrl: String
+  }
+
+  """
+  Input for creating a new flair
+  """
+  input CreateFlairInput {
+    """Community ID to create flair for"""
+    communityId: ID!
+    """Flair label text"""
+    label: String!
+    """Text color (hex)"""
+    color: String
+    """Background color (hex)"""
+    backgroundColor: String
+  }
+
+  """
+  Input for updating a flair
+  """
+  input UpdateFlairInput {
+    """New flair label text"""
+    label: String
+    """New text color (hex)"""
+    color: String
+    """New background color (hex)"""
+    backgroundColor: String
   }
 
   """
@@ -271,11 +400,11 @@ const typeDefs = `
   type Query {
     """
     Get paginated list of all users
-    
+
     **Pagination:**
     - limit: Number of results per page (default: 20, max: 100)
     - offset: Number of results to skip (default: 0)
-    
+
     **Example:**
     \`\`\`graphql
     query {
@@ -288,6 +417,28 @@ const typeDefs = `
     \`\`\`
     """
     users(limit: Int = 20, offset: Int = 0): [User!]!
+
+    """
+    Search users by username
+
+    **Parameters:**
+    - query: Search query (minimum 2 characters)
+    - limit: Number of results per page (default: 20, max: 100)
+    - offset: Number of results to skip (default: 0)
+
+    **Example:**
+    \`\`\`graphql
+    query {
+      searchUsers(query: "john", limit: 10, offset: 0) {
+        id
+        username
+        email
+        createdAt
+      }
+    }
+    \`\`\`
+    """
+    searchUsers(query: String!, limit: Int = 20, offset: Int = 0): [User!]!
     
     """
     Get a specific user by ID
@@ -583,7 +734,7 @@ const typeDefs = `
     
     """
     Get a specific comment by ID
-    
+
     **Example:**
     \`\`\`graphql
     query {
@@ -603,14 +754,258 @@ const typeDefs = `
     \`\`\`
     """
     comment(id: ID!): Comment
+
+    """
+    Get saved posts for the current user
+
+    **Authentication:** Required
+
+    **Parameters:**
+    - limit: Number of results per page (default: 20, max: 100)
+    - offset: Number of results to skip (default: 0)
+
+    **Example:**
+    \`\`\`graphql
+    query {
+      savedPosts(limit: 20, offset: 0) {
+        id
+        title
+        score
+        community {
+          name
+          displayName
+        }
+        author {
+          username
+        }
+        savedAt
+      }
+    }
+    \`\`\`
+    """
+    savedPosts(limit: Int = 20, offset: Int = 0): [Post!]!
+
+    """
+    Get flairs for a community
+
+    **Parameters:**
+    - communityId: Community ID (required)
+
+    **Example:**
+    \`\`\`graphql
+    query {
+      flairsByCommunity(communityId: "1") {
+        id
+        label
+        color
+        backgroundColor
+      }
+    }
+    \`\`\`
+    """
+    flairsByCommunity(communityId: ID!): [Flair!]!
+
+    """
+    Get posts by a specific user
+
+    **Parameters:**
+    - userId: User ID (required)
+    - limit: Number of results per page (default: 20)
+    - offset: Number of results to skip (default: 0)
+
+    **Example:**
+    \`\`\`graphql
+    query {
+      userPosts(userId: "1", limit: 20, offset: 0) {
+        id
+        title
+        score
+        community {
+          name
+        }
+      }
+    }
+    \`\`\`
+    """
+    userPosts(userId: ID!, limit: Int = 20, offset: Int = 0): [Post!]!
+
+    """
+    Get comments by a specific user
+
+    **Parameters:**
+    - userId: User ID (required)
+    - limit: Number of results per page (default: 20)
+    - offset: Number of results to skip (default: 0)
+
+    **Example:**
+    \`\`\`graphql
+    query {
+      userComments(userId: "1", limit: 20, offset: 0) {
+        id
+        content
+        score
+        post {
+          id
+          title
+        }
+      }
+    }
+    \`\`\`
+    """
+    userComments(userId: ID!, limit: Int = 20, offset: Int = 0): [Comment!]!
+
+    """
+    Search communities by name or display name
+
+    **Parameters:**
+    - query: Search query (required)
+    - limit: Number of results per page (default: 20)
+    - offset: Number of results to skip (default: 0)
+
+    **Example:**
+    \`\`\`graphql
+    query {
+      searchCommunities(query: "programming", limit: 10) {
+        id
+        name
+        displayName
+        memberCount
+      }
+    }
+    \`\`\`
+    """
+    searchCommunities(query: String!, limit: Int = 20, offset: Int = 0): [Community!]!
+
+    """
+    Search posts by title or content
+
+    **Parameters:**
+    - query: Search query (required)
+    - communityId: Filter by community (optional)
+    - limit: Number of results per page (default: 20)
+    - offset: Number of results to skip (default: 0)
+
+    **Example:**
+    \`\`\`graphql
+    query {
+      searchPosts(query: "javascript", limit: 10) {
+        id
+        title
+        score
+        community {
+          name
+        }
+      }
+    }
+    \`\`\`
+    """
+    searchPosts(query: String!, communityId: ID, limit: Int = 20, offset: Int = 0): [Post!]!
+
+    """
+    Get reports (moderator/admin only)
+
+    **Authentication:** Required (must be moderator)
+
+    **Parameters:**
+    - status: Filter by status (optional: 'pending', 'resolved', 'dismissed')
+    - limit: Number of results per page (default: 20)
+    - offset: Number of results to skip (default: 0)
+
+    **Example:**
+    \`\`\`graphql
+    query {
+      reports(status: "pending", limit: 20) {
+        id
+        reason
+        status
+        reporter {
+          username
+        }
+        post {
+          id
+          title
+        }
+      }
+    }
+    \`\`\`
+    """
+    reports(status: String, limit: Int = 20, offset: Int = 0): [Report!]!
+
+    """
+    Get a specific report by ID (moderator/admin only)
+
+    **Authentication:** Required (must be moderator)
+
+    **Example:**
+    \`\`\`graphql
+    query {
+      report(id: "1") {
+        id
+        reason
+        description
+        status
+        reporter {
+          username
+        }
+      }
+    }
+    \`\`\`
+    """
+    report(id: ID!): Report
+  }
+
+  """
+  Input for updating a user
+  """
+  input UpdateUserInput {
+    """New username (3-50 characters, alphanumeric + underscore)"""
+    username: String
+    """New email address"""
+    email: String
   }
 
   type Mutation {
+
+    """
+    Update user information
+
+    **Authentication:** Required (must be the user themselves)
+
+    **Example:**
+    \`\`\`graphql
+    mutation {
+      updateUser(userId: "1", input: {
+        username: "new_username"
+        email: "newemail@example.com"
+      }) {
+        id
+        username
+        email
+      }
+    }
+    \`\`\`
+    """
+    updateUser(userId: ID!, input: UpdateUserInput!): User!
+
+    """
+    Delete a user account
+
+    **Authentication:** Required (must be the user themselves)
+
+    **Example:**
+    \`\`\`graphql
+    mutation {
+      deleteUser(userId: "1")
+    }
+    \`\`\`
+    """
+    deleteUser(userId: ID!): Boolean!
+
     """
     Join a community
-    
+
     **Authentication:** Required
-    
+
     **Example:**
     \`\`\`graphql
     mutation {
@@ -627,9 +1022,9 @@ const typeDefs = `
     
     """
     Leave a community
-    
+
     **Authentication:** Required
-    
+
     **Example:**
     \`\`\`graphql
     mutation {
@@ -638,6 +1033,146 @@ const typeDefs = `
     \`\`\`
     """
     leaveCommunity(communityId: ID!): Boolean!
+
+    """
+    Create a new community
+
+    **Authentication:** Required
+
+    **Example:**
+    \`\`\`graphql
+    mutation {
+      createCommunity(input: {
+        name: "programming"
+        displayName: "Programming"
+        description: "All about programming"
+      }) {
+        id
+        name
+        displayName
+        description
+      }
+    }
+    \`\`\`
+    """
+    createCommunity(input: CreateCommunityInput!): Community!
+
+    """
+    Update community information
+
+    **Authentication:** Required (must be community owner or admin)
+
+    **Example:**
+    \`\`\`graphql
+    mutation {
+      updateCommunity(communityId: "1", input: {
+        displayName: "New Programming Community"
+        description: "Updated description"
+      }) {
+        id
+        displayName
+        description
+      }
+    }
+    \`\`\`
+    """
+    updateCommunity(communityId: ID!, input: UpdateCommunityInput!): Community!
+
+    """
+    Delete a community
+
+    **Authentication:** Required (must be community owner or admin)
+
+    **Example:**
+    \`\`\`graphql
+    mutation {
+      deleteCommunity(communityId: "1")
+    }
+    \`\`\`
+    """
+    deleteCommunity(communityId: ID!): Boolean!
+
+    """
+    Create a new flair for a community
+
+    **Authentication:** Required (must be community moderator or admin)
+
+    **Example:**
+    \`\`\`graphql
+    mutation {
+      createFlair(input: {
+        communityId: "1"
+        label: "Discussion"
+        color: "#ffffff"
+        backgroundColor: "#ff0000"
+      }) {
+        id
+        label
+        color
+        backgroundColor
+      }
+    }
+    \`\`\`
+    """
+    createFlair(input: CreateFlairInput!): Flair!
+
+    """
+    Update a flair
+
+    **Authentication:** Required (must be community moderator or admin)
+
+    **Example:**
+    \`\`\`graphql
+    mutation {
+      updateFlair(flairId: "1", input: {
+        label: "Updated Label"
+        color: "#000000"
+      }) {
+        id
+        label
+        color
+        backgroundColor
+      }
+    }
+    \`\`\`
+    """
+    updateFlair(flairId: ID!, input: UpdateFlairInput!): Flair!
+
+    """
+    Delete a flair
+
+    **Authentication:** Required (must be community moderator or admin)
+
+    **Example:**
+    \`\`\`graphql
+    mutation {
+      deleteFlair(flairId: "1")
+    }
+    \`\`\`
+    """
+    deleteFlair(flairId: ID!): Boolean!
+
+    """
+    Report a post or comment
+
+    **Authentication:** Required
+
+    **Example:**
+    \`\`\`graphql
+    mutation {
+      createReport(input: {
+        postId: "1"
+        reason: spam
+        description: "This post contains spam content"
+      }) {
+        id
+        reason
+        status
+      }
+    }
+    \`\`\`
+    """
+    createReport(input: CreateReportInput!): Report!
 
     """
     Create a new post
@@ -716,9 +1251,9 @@ const typeDefs = `
     
     """
     Unsave a post
-    
+
     **Authentication:** Required
-    
+
     **Example:**
     \`\`\`graphql
     mutation {
@@ -727,6 +1262,52 @@ const typeDefs = `
     \`\`\`
     """
     unsavePost(postId: ID!): Boolean!
+
+    """
+    Update a post
+
+    **Authentication:** Required (must be the author)
+
+    **Parameters:**
+    - postId: Post ID (required)
+    - input: Post update data
+      - title: New title (optional)
+      - content: New content (optional)
+      - flairIds: New flair IDs (optional)
+
+    **Example:**
+    \`\`\`graphql
+    mutation {
+      updatePost(postId: "1", input: {
+        title: "Updated title"
+        content: "Updated content"
+        flairIds: ["2", "3"]
+      }) {
+        id
+        title
+        content
+        flairs {
+          label
+        }
+      }
+    }
+    \`\`\`
+    """
+    updatePost(postId: ID!, input: UpdatePostInput!): Post!
+
+    """
+    Delete a post
+
+    **Authentication:** Required (must be the author or admin)
+
+    **Example:**
+    \`\`\`graphql
+    mutation {
+      deletePost(postId: "1")
+    }
+    \`\`\`
+    """
+    deletePost(postId: ID!): Boolean!
 
     """
     Create a comment on a post
@@ -816,6 +1397,76 @@ const typeDefs = `
     \`\`\`
     """
     deleteComment(commentId: ID!): Boolean!
+
+    """
+    Resolve a report (moderator/admin only)
+
+    **Authentication:** Required (must be moderator)
+
+    **Parameters:**
+    - reportId: Report ID (required)
+    - status: New status ('resolved' or 'dismissed')
+
+    **Example:**
+    \`\`\`graphql
+    mutation {
+      resolveReport(reportId: "1", status: "resolved") {
+        id
+        status
+        resolvedAt
+        resolvedBy {
+          username
+        }
+      }
+    }
+    \`\`\`
+    """
+    resolveReport(reportId: ID!, status: String!): Report!
+
+    """
+    Add a moderator to a community (owner only)
+
+    **Authentication:** Required (must be community owner)
+
+    **Parameters:**
+    - communityId: Community ID (required)
+    - userId: User ID to add as moderator (required)
+
+    **Example:**
+    \`\`\`graphql
+    mutation {
+      addModerator(communityId: "1", userId: "2") {
+        id
+        name
+        moderators {
+          user {
+            username
+          }
+          role
+        }
+      }
+    }
+    \`\`\`
+    """
+    addModerator(communityId: ID!, userId: ID!): Community!
+
+    """
+    Remove a moderator from a community (owner only)
+
+    **Authentication:** Required (must be community owner)
+
+    **Parameters:**
+    - communityId: Community ID (required)
+    - userId: User ID to remove as moderator (required)
+
+    **Example:**
+    \`\`\`graphql
+    mutation {
+      removeModerator(communityId: "1", userId: "2")
+    }
+    \`\`\`
+    """
+    removeModerator(communityId: ID!, userId: ID!): Boolean!
   }
 
   type Subscription {

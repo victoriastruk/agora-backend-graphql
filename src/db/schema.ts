@@ -13,8 +13,11 @@ import { relations } from 'drizzle-orm';
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
   username: text('username').notNull().unique(),
+  name: text('name'),
   email: text('email').notNull().unique(),
   passwordHash: text('password_hash').notNull(),
+  bio: text('bio'),
+  avatarUrl: text('avatar_url'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -27,7 +30,6 @@ export const sessions = pgTable('sessions', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
-// Communities (Subreddits)
 export const communities = pgTable('communities', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull().unique(),
@@ -35,12 +37,12 @@ export const communities = pgTable('communities', {
   description: text('description'),
   iconUrl: text('icon_url'),
   bannerUrl: text('banner_url'),
+  creatorId: integer('creator_id').references(() => users.id),
   memberCount: integer('member_count').default(0).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
-// Community members (join/leave)
 export const communityMembers = pgTable('community_members', {
   id: serial('id').primaryKey(),
   userId: integer('user_id')
@@ -52,7 +54,23 @@ export const communityMembers = pgTable('community_members', {
   joinedAt: timestamp('joined_at').defaultNow().notNull(),
 });
 
-// Flairs (tags for posts)
+export const moderatorRoleEnum = pgEnum('moderator_role', [
+  'owner',
+  'moderator',
+]);
+
+export const communityModerators = pgTable('community_moderators', {
+  id: serial('id').primaryKey(),
+  communityId: integer('community_id')
+    .references(() => communities.id)
+    .notNull(),
+  userId: integer('user_id')
+    .references(() => users.id)
+    .notNull(),
+  role: moderatorRoleEnum('role').notNull().default('moderator'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 export const flairs = pgTable('flairs', {
   id: serial('id').primaryKey(),
   communityId: integer('community_id')
@@ -64,8 +82,7 @@ export const flairs = pgTable('flairs', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
-// Posts
-const postTypeEnum = pgEnum('post_type', [
+export const postTypeEnum = pgEnum('post_type', [
   'text',
   'image',
   'video',
@@ -90,7 +107,6 @@ export const posts = pgTable('posts', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
-// Post media (images, videos, links)
 export const postMedia = pgTable('post_media', {
   id: serial('id').primaryKey(),
   postId: integer('post_id')
@@ -104,7 +120,6 @@ export const postMedia = pgTable('post_media', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
-// Post flairs (many-to-many)
 export const postFlairs = pgTable('post_flairs', {
   id: serial('id').primaryKey(),
   postId: integer('post_id')
@@ -115,7 +130,6 @@ export const postFlairs = pgTable('post_flairs', {
     .notNull(),
 });
 
-// Comments (must be defined before votes)
 export const comments = pgTable('comments', {
   id: serial('id').primaryKey(),
   postId: integer('post_id')
@@ -124,15 +138,14 @@ export const comments = pgTable('comments', {
   authorId: integer('author_id')
     .references(() => users.id)
     .notNull(),
-  parentId: integer('parent_id'), // for nested comments - self-reference handled via relations
+  parentId: integer('parent_id'),
   content: text('content').notNull(),
   score: integer('score').default(0).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
-// Votes (upvote/downvote)
-const voteTypeEnum = pgEnum('vote_type', ['upvote', 'downvote']);
+export const voteTypeEnum = pgEnum('vote_type', ['upvote', 'downvote']);
 
 export const votes = pgTable('votes', {
   id: serial('id').primaryKey(),
@@ -145,7 +158,6 @@ export const votes = pgTable('votes', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
-// Saved posts
 export const savedPosts = pgTable('saved_posts', {
   id: serial('id').primaryKey(),
   userId: integer('user_id')
@@ -157,20 +169,64 @@ export const savedPosts = pgTable('saved_posts', {
   savedAt: timestamp('saved_at').defaultNow().notNull(),
 });
 
-// Relations
+export const reportReasonEnum = pgEnum('report_reason', [
+  'spam',
+  'harassment',
+  'hate_speech',
+  'violence',
+  'inappropriate_content',
+  'copyright_violation',
+  'other',
+]);
+
+export const reports = pgTable('reports', {
+  id: serial('id').primaryKey(),
+  reporterId: integer('reporter_id')
+    .references(() => users.id)
+    .notNull(),
+  postId: integer('post_id').references(() => posts.id),
+  commentId: integer('comment_id').references(() => comments.id),
+  reason: reportReasonEnum('reason').notNull(),
+  description: text('description'),
+  status: varchar('status', { length: 20 }).default('pending').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  resolvedAt: timestamp('resolved_at'),
+  resolvedBy: integer('resolved_by').references(() => users.id),
+});
+
 export const usersRelations = relations(users, ({ many }) => ({
   posts: many(posts),
   comments: many(comments),
   votes: many(votes),
   communityMemberships: many(communityMembers),
   savedPosts: many(savedPosts),
+  reports: many(reports),
 }));
 
-export const communitiesRelations = relations(communities, ({ many }) => ({
+export const communitiesRelations = relations(communities, ({ one, many }) => ({
   posts: many(posts),
   members: many(communityMembers),
+  moderators: many(communityModerators),
   flairs: many(flairs),
+  creator: one(users, {
+    fields: [communities.creatorId],
+    references: [users.id],
+  }),
 }));
+
+export const communityModeratorsRelations = relations(
+  communityModerators,
+  ({ one }) => ({
+    community: one(communities, {
+      fields: [communityModerators.communityId],
+      references: [communities.id],
+    }),
+    user: one(users, {
+      fields: [communityModerators.userId],
+      references: [users.id],
+    }),
+  })
+);
 
 export const postsRelations = relations(posts, ({ one, many }) => ({
   community: one(communities, {
@@ -185,6 +241,7 @@ export const postsRelations = relations(posts, ({ one, many }) => ({
   comments: many(comments),
   votes: many(votes),
   flairs: many(postFlairs),
+  reports: many(reports),
 }));
 
 export const commentsRelations = relations(comments, ({ one, many }) => ({
@@ -205,9 +262,28 @@ export const commentsRelations = relations(comments, ({ one, many }) => ({
     relationName: 'commentReplies',
   }),
   votes: many(votes),
+  reports: many(reports),
 }));
 
-// Types
+export const reportsRelations = relations(reports, ({ one }) => ({
+  reporter: one(users, {
+    fields: [reports.reporterId],
+    references: [users.id],
+  }),
+  post: one(posts, {
+    fields: [reports.postId],
+    references: [posts.id],
+  }),
+  comment: one(comments, {
+    fields: [reports.commentId],
+    references: [comments.id],
+  }),
+  resolver: one(users, {
+    fields: [reports.resolvedBy],
+    references: [users.id],
+  }),
+}));
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Session = typeof sessions.$inferSelect;
@@ -228,3 +304,7 @@ export type CommunityMember = typeof communityMembers.$inferSelect;
 export type NewCommunityMember = typeof communityMembers.$inferInsert;
 export type SavedPost = typeof savedPosts.$inferSelect;
 export type NewSavedPost = typeof savedPosts.$inferInsert;
+export type Report = typeof reports.$inferSelect;
+export type NewReport = typeof reports.$inferInsert;
+export type CommunityModerator = typeof communityModerators.$inferSelect;
+export type NewCommunityModerator = typeof communityModerators.$inferInsert;

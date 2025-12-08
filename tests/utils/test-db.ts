@@ -41,6 +41,9 @@ export const setupTestDb = async (): Promise<
         username TEXT NOT NULL UNIQUE,
         email TEXT NOT NULL UNIQUE,
         password_hash TEXT NOT NULL,
+        name TEXT,
+        bio TEXT,
+        avatar_url TEXT,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       )
     `.catch(() => {});
@@ -84,6 +87,8 @@ export const clearTestDb = async (): Promise<void> => {
 
   try {
     await db.delete(schema.sessions).catch(() => {});
+    await db.delete(schema.communityMembers).catch(() => {});
+    await db.delete(schema.communities).catch(() => {});
     await db.delete(schema.users).catch(() => {});
   } catch (error) {
     if (error instanceof Error && !error.message.includes('CONNECTION_ENDED')) {
@@ -144,6 +149,31 @@ export const createTestSession = async (sessionData: {
       id: sessionData.id,
       userId: sessionData.userId,
       expiresAt: sessionData.expiresAt,
+    })
+    .returning();
+
+  return result[0];
+};
+
+export const createTestCommunity = async (communityData: {
+  name: string;
+  displayName: string;
+  description?: string;
+  iconUrl?: string;
+  bannerUrl?: string;
+  memberCount?: number;
+}) => {
+  if (!db) throw new Error('Test database not initialized');
+
+  const result = await db
+    .insert(schema.communities)
+    .values({
+      name: communityData.name,
+      displayName: communityData.displayName,
+      description: communityData.description,
+      iconUrl: communityData.iconUrl,
+      bannerUrl: communityData.bannerUrl,
+      memberCount: communityData.memberCount,
     })
     .returning();
 

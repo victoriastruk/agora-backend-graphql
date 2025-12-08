@@ -1,12 +1,6 @@
-import { eq, desc, sql, and } from 'drizzle-orm';
+import { eq, desc, sql, and, isNull } from 'drizzle-orm';
 import { db } from '@/db/client';
-import {
-  comments,
-  votes,
-  users,
-  type Comment,
-  type NewComment,
-} from '@/db/schema';
+import { comments, votes, type Comment, type NewComment } from '@/db/schema';
 import { postQueries } from './posts';
 
 export type CommentWithRelations = Comment & {
@@ -156,5 +150,19 @@ export const commentQueries = {
       .update(comments)
       .set({ score: sql`${comments.score} + ${delta}` })
       .where(eq(comments.id, commentId));
+  },
+
+  async getByAuthor(
+    authorId: number,
+    limit = 20,
+    offset = 0
+  ): Promise<Comment[]> {
+    return await db
+      .select()
+      .from(comments)
+      .where(eq(comments.authorId, authorId))
+      .orderBy(desc(comments.createdAt))
+      .limit(limit)
+      .offset(offset);
   },
 };

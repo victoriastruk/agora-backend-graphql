@@ -1,23 +1,15 @@
-import { usersRoutes } from './users';
-import { communitiesRoutes } from './communities';
-import { postsRoutes } from './posts';
-import { feedRoutes, topStoriesRoutes } from './feed';
-import { commentsRoutes } from './comments';
-
 /**
- * Central export for all API routes
+ * REST API routes
  *
- * ⚠️ DEPRECATED: Ці REST endpoints застарілі.
- * Використовуйте GraphQL API замість них (окрім auth endpoints).
+ * ⚠️ DEPRECATED: REST endpoints are deprecated (except auth).
+ * Use GraphQL API instead.
  *
  * GraphQL endpoint: /graphql
- * Документація: GRAPHQL_API.md
+ * Auth endpoints: /auth/*
+ *
+ * All domain operations (posts, comments, communities, etc.) are handled via GraphQL.
+ * Only authentication remains as REST endpoints for OAuth compatibility.
  */
-export const routes = [
-  usersRoutes,
-  communitiesRoutes,
-  postsRoutes,
-  feedRoutes,
-  topStoriesRoutes,
-  commentsRoutes,
-];
+
+// No REST routes - all functionality is via GraphQL
+export {};

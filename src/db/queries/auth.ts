@@ -1,4 +1,4 @@
-import { eq, or } from 'drizzle-orm';
+import { eq, like, desc, lt } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { users, sessions } from '@/db/schema';
 import type { NewUser, User } from '@/db/schema';
@@ -62,6 +62,23 @@ export class AuthQueries {
   }
 
   static async cleanupExpiredSessions(): Promise<void> {
-    await db.delete(sessions).where(eq(sessions.expiresAt, new Date()));
+    await db.delete(sessions).where(lt(sessions.expiresAt, new Date()));
+  }
+
+  static async searchUsers(
+    query: string,
+    limit = 20,
+    offset = 0
+  ): Promise<Omit<User, 'passwordHash'>[]> {
+    const searchPattern = `%${query}%`;
+    const usersResult = await db
+      .select()
+      .from(users)
+      .where(like(users.username, searchPattern))
+      .orderBy(desc(users.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    return usersResult.map(({ passwordHash, ...user }) => user);
   }
 }

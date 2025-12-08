@@ -1,15 +1,12 @@
-import { eq, desc, sql, and, or, gte, lte } from 'drizzle-orm';
+import { eq, desc, sql, and, gte, like, or } from 'drizzle-orm';
 import { db } from '@/db/client';
 import {
   posts,
   postMedia,
   postFlairs,
   votes,
-  comments,
   flairs,
   savedPosts,
-  communities,
-  users,
   type Post,
   type NewPost,
   type PostMedia,
@@ -17,10 +14,20 @@ import {
 } from '@/db/schema';
 
 export type PostWithRelations = Post & {
-  community?: { id: number; name: string; displayName: string; iconUrl?: string | null };
+  community?: {
+    id: number;
+    name: string;
+    displayName: string;
+    iconUrl?: string | null;
+  };
   author?: { id: number; username: string };
   media?: PostMedia[];
-  flairs?: Array<{ id: number; label: string; color?: string | null; backgroundColor?: string | null }>;
+  flairs?: Array<{
+    id: number;
+    label: string;
+    color?: string | null;
+    backgroundColor?: string | null;
+  }>;
   userVote?: 'upvote' | 'downvote' | null;
   isSaved?: boolean;
 };
@@ -36,11 +43,18 @@ export const postQueries = {
   },
 
   async getById(id: number): Promise<Post | null> {
-    const result = await db.select().from(posts).where(eq(posts.id, id)).limit(1);
+    const result = await db
+      .select()
+      .from(posts)
+      .where(eq(posts.id, id))
+      .limit(1);
     return result[0] || null;
   },
 
-  async getByIdWithRelations(id: number, userId?: number): Promise<PostWithRelations | null> {
+  async getByIdWithRelations(
+    id: number,
+    userId?: number
+  ): Promise<PostWithRelations | null> {
     const post = await this.getById(id);
     if (!post) return null;
 
@@ -67,7 +81,9 @@ export const postQueries = {
         ? db
             .select()
             .from(savedPosts)
-            .where(and(eq(savedPosts.userId, userId), eq(savedPosts.postId, id)))
+            .where(
+              and(eq(savedPosts.userId, userId), eq(savedPosts.postId, id))
+            )
             .limit(1)
         : Promise.resolve([]),
     ]);
@@ -81,7 +97,11 @@ export const postQueries = {
     };
   },
 
-  async getByCommunity(communityId: number, limit = 20, offset = 0): Promise<Post[]> {
+  async getByCommunity(
+    communityId: number,
+    limit = 20,
+    offset = 0
+  ): Promise<Post[]> {
     return await db
       .select()
       .from(posts)
@@ -95,11 +115,10 @@ export const postQueries = {
     sort: 'best' | 'hot' | 'new' | 'rising' | 'top' = 'best',
     limit = 20,
     offset = 0,
-    userId?: number
+    _userId?: number
   ): Promise<Post[]> {
     let orderBy;
     const now = new Date();
-    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
     switch (sort) {
       case 'hot':
@@ -132,7 +151,6 @@ export const postQueries = {
   },
 
   async getTopStories(limit = 6): Promise<Post[]> {
-    // Get top posts from last 24 hours
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     return await db
       .select()
@@ -161,19 +179,30 @@ export const postQueries = {
     return result.length > 0;
   },
 
-  async addMedia(postId: number, media: Omit<NewPostMedia, 'postId' | 'id' | 'createdAt'>[]): Promise<PostMedia[]> {
+  async addMedia(
+    postId: number,
+    media: Omit<NewPostMedia, 'postId' | 'id' | 'createdAt'>[]
+  ): Promise<PostMedia[]> {
     if (media.length === 0) return [];
-    const result = await db.insert(postMedia).values(media.map((m) => ({ ...m, postId }))).returning();
+    const result = await db
+      .insert(postMedia)
+      .values(media.map((m) => ({ ...m, postId })))
+      .returning();
     return result;
   },
 
   async addFlairs(postId: number, flairIds: number[]): Promise<void> {
     if (flairIds.length === 0) return;
-    await db.insert(postFlairs).values(flairIds.map((flairId) => ({ postId, flairId })));
+    await db
+      .insert(postFlairs)
+      .values(flairIds.map((flairId) => ({ postId, flairId })));
   },
 
-  async vote(postId: number, userId: number, voteType: 'upvote' | 'downvote'): Promise<void> {
-    // Check if vote exists
+  async vote(
+    postId: number,
+    userId: number,
+    voteType: 'upvote' | 'downvote'
+  ): Promise<void> {
     const existingVote = await db
       .select()
       .from(votes)
@@ -181,13 +210,10 @@ export const postQueries = {
       .limit(1);
 
     if (existingVote.length > 0) {
-      // Update existing vote
       if (existingVote[0].type === voteType) {
-        // Remove vote if clicking same button
         await db.delete(votes).where(eq(votes.id, existingVote[0].id));
         await this.updateScore(postId, voteType === 'upvote' ? -1 : 1);
       } else {
-        // Change vote
         await db
           .update(votes)
           .set({ type: voteType })
@@ -195,7 +221,6 @@ export const postQueries = {
         await this.updateScore(postId, voteType === 'upvote' ? 2 : -2);
       }
     } else {
-      // Create new vote
       await db.insert(votes).values({ postId, userId, type: voteType });
       await this.updateScore(postId, voteType === 'upvote' ? 1 : -1);
     }
@@ -232,5 +257,61 @@ export const postQueries = {
       .delete(savedPosts)
       .where(and(eq(savedPosts.userId, userId), eq(savedPosts.postId, postId)));
   },
-};
 
+  async getSavedByUser(
+    userId: number,
+    limit = 20,
+    offset = 0
+  ): Promise<Post[]> {
+    const savedPostsResult = await db
+      .select({
+        post: posts,
+        savedAt: savedPosts.savedAt,
+      })
+      .from(savedPosts)
+      .innerJoin(posts, eq(savedPosts.postId, posts.id))
+      .where(eq(savedPosts.userId, userId))
+      .orderBy(desc(savedPosts.savedAt))
+      .limit(limit)
+      .offset(offset);
+
+    return savedPostsResult.map((result) => ({
+      ...result.post,
+      savedAt: result.savedAt,
+    }));
+  },
+
+  async getByAuthor(authorId: number, limit = 20, offset = 0): Promise<Post[]> {
+    return await db
+      .select()
+      .from(posts)
+      .where(eq(posts.authorId, authorId))
+      .orderBy(desc(posts.createdAt))
+      .limit(limit)
+      .offset(offset);
+  },
+
+  async search(
+    query: string,
+    communityId?: number,
+    limit = 20,
+    offset = 0
+  ): Promise<Post[]> {
+    const searchPattern = `%${query}%`;
+    const conditions = [
+      or(like(posts.title, searchPattern), like(posts.content, searchPattern)),
+    ];
+
+    if (communityId) {
+      conditions.push(eq(posts.communityId, communityId));
+    }
+
+    return await db
+      .select()
+      .from(posts)
+      .where(and(...conditions))
+      .orderBy(desc(posts.score))
+      .limit(limit)
+      .offset(offset);
+  },
+};

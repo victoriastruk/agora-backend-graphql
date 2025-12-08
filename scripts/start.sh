@@ -47,7 +47,11 @@ start_docker_services() {
   section "📦 Starting Docker services (PostgreSQL + Redis)..."
   docker compose up -d
 
-  if ! docker compose ps | grep -q "Up"; then
+  # Wait a moment for services to start (only needed for newly created containers)
+  sleep 2
+
+  # Check if services are up
+  if ! docker compose ps 2>/dev/null | grep -q "Up"; then
     echo -e "${RED}❌ Some Docker services failed to start${NC}"
     docker compose ps
     exit 1

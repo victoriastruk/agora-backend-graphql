@@ -6,7 +6,6 @@ import { corsPlugin } from '@/plugins/cors';
 import { yogaPlugin } from '@/plugins/yoga';
 import { errorPlugin } from '@/plugins/error';
 import { createRequestLogger } from '@/plugins/request-logger';
-import { routes } from '@/routes';
 import { authController } from '@/controllers/auth.controller';
 import { googleAuthController } from './controllers/googleAuth.controller';
 import { healthRoutes } from '@/routes/health';
@@ -34,11 +33,7 @@ class Application {
       .use(healthRoutes)
       .use(authController)
       .use(googleAuthController)
-      .use(yogaPlugin); 
-
-    routes.forEach((route) => {
-      app.use(route);
-    });
+      .use(yogaPlugin);
 
     app.onStop(() => {
       this.config.logger.logServerShutdown();
