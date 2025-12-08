@@ -43,6 +43,71 @@ const requireAuth = (context: GraphQLContext): number => {
   return userId;
 };
 
+const requireCommunityMembership = async (
+  userId: number,
+  communityId: number
+): Promise<void> => {
+  const isMember = await communityQueries.isMember(userId, communityId);
+  if (!isMember) {
+    throw new GraphQLError('Join the community to perform this action', {
+      extensions: { code: 'FORBIDDEN' },
+    });
+  }
+};
+
+const getReportCommunityId = async (report: Report): Promise<number | null> => {
+  if (report.postId) {
+    const post = await postQueries.getById(report.postId);
+    return post?.communityId ?? null;
+  }
+
+  if (report.commentId) {
+    const comment = await commentQueries.getById(report.commentId);
+    if (!comment) return null;
+    const post = await postQueries.getById(comment.postId);
+    return post?.communityId ?? null;
+  }
+
+  return null;
+};
+
+const canModerateReport = async (
+  userId: number,
+  report: Report
+): Promise<boolean> => {
+  const communityId = await getReportCommunityId(report);
+  if (!communityId) return false;
+  return communityQueries.isModerator(userId, communityId);
+};
+
+const ensureCanViewReport = async (
+  userId: number,
+  report: Report
+): Promise<void> => {
+  const isReporter = report.reporterId === userId;
+  const isModerator = await canModerateReport(userId, report);
+
+  if (!isReporter && !isModerator) {
+    throw new GraphQLError(
+      'Only moderators of the related community or the reporter can view this report',
+      { extensions: { code: 'FORBIDDEN' } }
+    );
+  }
+};
+
+const ensureCanResolveReport = async (
+  userId: number,
+  report: Report
+): Promise<void> => {
+  const isModerator = await canModerateReport(userId, report);
+  if (!isModerator) {
+    throw new GraphQLError(
+      'Only moderators of the related community can resolve this report',
+      { extensions: { code: 'FORBIDDEN' } }
+    );
+  }
+};
+
 const enrichPost = async (post: Post, userId?: number) => {
   const enrichedPost = await postQueries.getByIdWithRelations(post.id, userId);
   if (!enrichedPost) return null;
@@ -636,10 +701,20 @@ export const resolvers = {
       context: GraphQLContext
     ) => {
       try {
-        requireAuth(context);
-        // In a full implementation, check if user is a moderator/admin
+        const userId = requireAuth(context);
         const allReports = await reportQueries.getAll(status, limit, offset);
-        return Promise.all(allReports.map(enrichReport));
+
+        const allowedReports: Report[] = [];
+        for (const report of allReports) {
+          const canView =
+            report.reporterId === userId ||
+            (await canModerateReport(userId, report));
+          if (canView) {
+            allowedReports.push(report);
+          }
+        }
+
+        return Promise.all(allowedReports.map(enrichReport));
       } catch (error) {
         console.error('Error fetching reports:', error);
         if (error instanceof GraphQLError) throw error;
@@ -655,9 +730,11 @@ export const resolvers = {
       context: GraphQLContext
     ) => {
       try {
-        requireAuth(context);
+        const userId = requireAuth(context);
         const report = await reportQueries.getById(parseInt(id));
         if (!report) return null;
+
+        await ensureCanViewReport(userId, report);
         return enrichReport(report);
       } catch (error) {
         console.error('Error fetching report:', error);
@@ -1360,13 +1437,14 @@ export const resolvers = {
       try {
         const userId = requireAuth(context);
 
-        // In a full implementation, check if user is an admin/moderator
         const report = await reportQueries.getById(parseInt(reportId));
         if (!report) {
           throw new GraphQLError('Report not found', {
             extensions: { code: 'NOT_FOUND' },
           });
         }
+
+        await ensureCanResolveReport(userId, report);
 
         const updatedReport = await reportQueries.updateStatus(
           parseInt(reportId),
@@ -1416,8 +1494,12 @@ export const resolvers = {
         const userId = requireAuth(context);
 
         const { communityId, title, content, type, media, flairIds } = input;
+        const communityIdNum = parseInt(communityId);
+
+        await requireCommunityMembership(userId, communityIdNum);
+
         const post = await postQueries.create({
-          communityId: parseInt(communityId),
+          communityId: communityIdNum,
           authorId: userId,
           title,
           content,
@@ -1459,17 +1541,20 @@ export const resolvers = {
       try {
         const userId = requireAuth(context);
 
-        await postQueries.vote(
-          parseInt(postId),
-          userId,
-          voteType as 'upvote' | 'downvote'
-        );
         const post = await postQueries.getById(parseInt(postId));
         if (!post) {
           throw new GraphQLError('Post not found', {
             extensions: { code: 'NOT_FOUND' },
           });
         }
+
+        await requireCommunityMembership(userId, post.communityId);
+
+        await postQueries.vote(
+          parseInt(postId),
+          userId,
+          voteType as 'upvote' | 'downvote'
+        );
 
         const enrichedPost = await enrichPost(post, userId);
 
@@ -1493,6 +1578,16 @@ export const resolvers = {
     ) => {
       try {
         const userId = requireAuth(context);
+
+        const post = await postQueries.getById(parseInt(postId));
+        if (!post) {
+          throw new GraphQLError('Post not found', {
+            extensions: { code: 'NOT_FOUND' },
+          });
+        }
+
+        await requireCommunityMembership(userId, post.communityId);
+
         await postQueries.save(userId, parseInt(postId));
         return true;
       } catch (error) {
@@ -1511,6 +1606,16 @@ export const resolvers = {
     ) => {
       try {
         const userId = requireAuth(context);
+
+        const post = await postQueries.getById(parseInt(postId));
+        if (!post) {
+          throw new GraphQLError('Post not found', {
+            extensions: { code: 'NOT_FOUND' },
+          });
+        }
+
+        await requireCommunityMembership(userId, post.communityId);
+
         await postQueries.unsave(userId, parseInt(postId));
         return true;
       } catch (error) {
@@ -1637,6 +1742,15 @@ export const resolvers = {
         const userId = requireAuth(context);
 
         const { postId, content, parentId } = input;
+        const post = await postQueries.getById(parseInt(postId));
+        if (!post) {
+          throw new GraphQLError('Post not found', {
+            extensions: { code: 'POST_NOT_FOUND' },
+          });
+        }
+
+        await requireCommunityMembership(userId, post.communityId);
+
         const comment = await commentQueries.create({
           postId: parseInt(postId),
           authorId: userId,
@@ -1670,17 +1784,27 @@ export const resolvers = {
       try {
         const userId = requireAuth(context);
 
-        await commentQueries.vote(
-          parseInt(commentId),
-          userId,
-          voteType as 'upvote' | 'downvote'
-        );
         const comment = await commentQueries.getById(parseInt(commentId));
         if (!comment) {
           throw new GraphQLError('Comment not found', {
             extensions: { code: 'NOT_FOUND' },
           });
         }
+
+        const post = await postQueries.getById(comment.postId);
+        if (!post) {
+          throw new GraphQLError('Post not found', {
+            extensions: { code: 'NOT_FOUND' },
+          });
+        }
+
+        await requireCommunityMembership(userId, post.communityId);
+
+        await commentQueries.vote(
+          parseInt(commentId),
+          userId,
+          voteType as 'upvote' | 'downvote'
+        );
 
         const enrichedComment = await enrichComment(
           comment as Comment & { replies?: Comment[] },
