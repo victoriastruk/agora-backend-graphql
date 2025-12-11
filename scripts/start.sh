@@ -50,9 +50,13 @@ start_docker_services() {
   # Wait a moment for services to start (only needed for newly created containers)
   sleep 2
 
-  # Check if services are up
-  if ! docker compose ps 2>/dev/null | grep -q "Up"; then
+  # Check if any service crashed/exited early. Allow "starting" health; readiness is handled below.
+  local failed
+  failed=$(docker compose ps --format '{{.Name}} {{.State}} {{.Health}}' 2>/dev/null | awk '$2!="running" || $3=="unhealthy" {print}')
+
+  if [ -n "$failed" ]; then
     echo -e "${RED}❌ Some Docker services failed to start${NC}"
+    echo "$failed"
     docker compose ps
     exit 1
   fi
