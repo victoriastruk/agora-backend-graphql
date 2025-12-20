@@ -1,15 +1,15 @@
-import { Elysia } from 'elysia';
-import { corsPlugin } from '@/plugins/cors';
-import { yogaPlugin } from '@/plugins/yoga';
-import { errorPlugin } from '@/plugins/error';
-import { createRequestLogger } from '@/plugins/request-logger';
-import { googleAuthController } from '@/controllers/googleAuth.controller';
-import { authController } from '@/controllers/auth.controller';
-import { healthRoutes } from '@/routes/health';
-import { logger } from '@/utils/logger';
-import { AppConfig } from '@/types/app';
-import { setDbInstance } from '@/db/client';
-import { db as getTestDb } from './test-db';
+import { Elysia } from "elysia";
+import { corsPlugin } from "@/plugins/cors";
+import { yogaPlugin } from "@/plugins/yoga";
+import { errorPlugin } from "@/plugins/error";
+import { createRequestLogger } from "@/plugins/request-logger";
+import { googleAuthController } from "@/controllers/googleAuth.controller";
+import { authController } from "@/controllers/auth.controller";
+import { healthRoutes } from "@/routes/health";
+import { logger } from "@/utils/logger";
+import { AppConfig } from "@/types/app";
+import { setDbInstance } from "@/db/client";
+import { db as getTestDb } from "./test-db";
 
 export const createTestApp = (config?: Partial<AppConfig>): Elysia => {
   const appConfig: AppConfig = {
@@ -42,13 +42,13 @@ export const createTestApp = (config?: Partial<AppConfig>): Elysia => {
 
 export const testUtils = {
   createAgent: (app: Elysia) => {
-    const baseUrl = 'http://localhost';
+    const baseUrl = "http://localhost";
 
     return {
       get: async (path: string, options?: RequestInit) => {
         return app.handle(
           new Request(`${baseUrl}${path}`, {
-            method: 'GET',
+            method: "GET",
             ...options,
           })
         );
@@ -57,9 +57,9 @@ export const testUtils = {
       post: async (path: string, body?: any, options?: RequestInit) => {
         return app.handle(
           new Request(`${baseUrl}${path}`, {
-            method: 'POST',
+            method: "POST",
             headers: {
-              'Content-Type': 'application/json',
+              "Content-Type": "application/json",
               ...options?.headers,
             },
             body: body ? JSON.stringify(body) : undefined,
@@ -71,9 +71,9 @@ export const testUtils = {
       put: async (path: string, body?: any, options?: RequestInit) => {
         return app.handle(
           new Request(`${baseUrl}${path}`, {
-            method: 'PUT',
+            method: "PUT",
             headers: {
-              'Content-Type': 'application/json',
+              "Content-Type": "application/json",
               ...options?.headers,
             },
             body: body ? JSON.stringify(body) : undefined,
@@ -85,7 +85,7 @@ export const testUtils = {
       delete: async (path: string, options?: RequestInit) => {
         return app.handle(
           new Request(`${baseUrl}${path}`, {
-            method: 'DELETE',
+            method: "DELETE",
             ...options,
           })
         );
@@ -94,9 +94,9 @@ export const testUtils = {
       patch: async (path: string, body?: any, options?: RequestInit) => {
         return app.handle(
           new Request(`${baseUrl}${path}`, {
-            method: 'PATCH',
+            method: "PATCH",
             headers: {
-              'Content-Type': 'application/json',
+              "Content-Type": "application/json",
               ...options?.headers,
             },
             body: body ? JSON.stringify(body) : undefined,
@@ -108,14 +108,14 @@ export const testUtils = {
   },
 
   parseResponse: async (response: Response): Promise<any> => {
-    const contentType = response.headers.get('content-type');
+    const contentType = response.headers.get("content-type");
     const text = await response.text();
 
-    if (contentType?.includes('application/json')) {
+    if (contentType?.includes("application/json")) {
       try {
         return JSON.parse(text);
       } catch (e) {
-        console.log('JSON parse error:', e, 'Text:', text);
+        console.log("JSON parse error:", e, "Text:", text);
         return text;
       }
     }
@@ -131,7 +131,7 @@ export const testUtils = {
   generateTestUser: (overrides = {}) => ({
     username: `testuser_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
     email: `test${Date.now()}@example.com`,
-    password: 'TestPassword123!',
+    password: "TestPassword123!",
     ...overrides,
   }),
 
@@ -147,25 +147,21 @@ export const testUtils = {
   },
 
   getCookie: (response: Response, cookieName: string): string | null => {
-    const setCookie = response.headers.get('set-cookie');
+    const setCookie = response.headers.get("set-cookie");
     if (!setCookie) return null;
 
-    const cookies = setCookie.split(',').map((c) => c.trim());
+    const cookies = setCookie.split(",").map((c) => c.trim());
     const cookie = cookies.find((c) => c.startsWith(`${cookieName}=`));
 
     if (!cookie) return null;
 
-    return cookie.split(';')[0].split('=')[1] || null;
+    return cookie.split(";")[0].split("=")[1] || null;
   },
 
   graphql: (app: Elysia) => ({
-    query: async (
-      query: string,
-      variables?: Record<string, any>,
-      authToken?: string
-    ) => {
+    query: async (query: string, variables?: Record<string, any>, authToken?: string) => {
       const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       };
 
       if (authToken) {
@@ -173,8 +169,8 @@ export const testUtils = {
       }
 
       return app.handle(
-        new Request('http://localhost/graphql', {
-          method: 'POST',
+        new Request("http://localhost/graphql", {
+          method: "POST",
           headers,
           body: JSON.stringify({
             query,
@@ -184,13 +180,9 @@ export const testUtils = {
       );
     },
 
-    mutation: async (
-      mutation: string,
-      variables?: Record<string, any>,
-      authToken?: string
-    ) => {
+    mutation: async (mutation: string, variables?: Record<string, any>, authToken?: string) => {
       const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       };
 
       if (authToken) {
@@ -198,8 +190,8 @@ export const testUtils = {
       }
 
       return app.handle(
-        new Request('http://localhost/graphql', {
-          method: 'POST',
+        new Request("http://localhost/graphql", {
+          method: "POST",
           headers,
           body: JSON.stringify({
             query: mutation,
@@ -222,7 +214,7 @@ export const testUtils = {
 
 export const mockTemplates = {
   redis: () => ({
-    setex: () => Promise.resolve('OK'),
+    setex: () => Promise.resolve("OK"),
     get: () => Promise.resolve(null),
     del: () => Promise.resolve(1),
     expire: () => Promise.resolve(1),

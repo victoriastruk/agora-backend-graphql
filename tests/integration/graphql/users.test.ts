@@ -1,20 +1,8 @@
-import {
-  describe,
-  it,
-  expect,
-  beforeEach,
-  afterEach,
-  afterAll,
-} from 'bun:test';
-import { createTestApp, testUtils } from '../../utils/test-helpers';
-import {
-  setupTestDb,
-  teardownTestDb,
-  clearTestDb,
-  createTestUser,
-} from '../../utils/test-db';
+import { describe, it, expect, beforeEach, afterEach, afterAll } from "bun:test";
+import { createTestApp, testUtils } from "../../utils/test-helpers";
+import { setupTestDb, teardownTestDb, clearTestDb, createTestUser } from "../../utils/test-db";
 
-describe('GraphQL Users Integration Tests', () => {
+describe("GraphQL Users Integration Tests", () => {
   let app: ReturnType<typeof createTestApp>;
   let graphql: ReturnType<typeof testUtils.graphql>;
 
@@ -33,8 +21,8 @@ describe('GraphQL Users Integration Tests', () => {
     await teardownTestDb();
   });
 
-  describe('Query.users', () => {
-    it('should return empty array when no users exist', async () => {
+  describe("Query.users", () => {
+    it("should return empty array when no users exist", async () => {
       const response = await graphql.query(`
         query {
           users(limit: 10, offset: 0) {
@@ -51,17 +39,17 @@ describe('GraphQL Users Integration Tests', () => {
       expect(result.data.users).toEqual([]);
     });
 
-    it('should return users with pagination', async () => {
+    it("should return users with pagination", async () => {
       // Create test users
       await createTestUser({
-        username: 'user1',
-        email: 'user1@example.com',
-        passwordHash: 'hash1',
+        username: "user1",
+        email: "user1@example.com",
+        passwordHash: "hash1",
       });
       await createTestUser({
-        username: 'user2',
-        email: 'user2@example.com',
-        passwordHash: 'hash2',
+        username: "user2",
+        email: "user2@example.com",
+        passwordHash: "hash2",
       });
 
       const response = await graphql.query(`
@@ -78,12 +66,12 @@ describe('GraphQL Users Integration Tests', () => {
       const result = await testUtils.parseGraphQLResponse(response);
       expect(result.errors).toBeUndefined();
       expect(result.data.users).toHaveLength(2);
-      expect(result.data.users[0]).toHaveProperty('username');
-      expect(result.data.users[0]).toHaveProperty('email');
-      expect(result.data.users[0]).not.toHaveProperty('passwordHash');
+      expect(result.data.users[0]).toHaveProperty("username");
+      expect(result.data.users[0]).toHaveProperty("email");
+      expect(result.data.users[0]).not.toHaveProperty("passwordHash");
     });
 
-    it('should respect pagination limits', async () => {
+    it("should respect pagination limits", async () => {
       // Create multiple users
       for (let i = 0; i < 5; i++) {
         await createTestUser({
@@ -108,12 +96,12 @@ describe('GraphQL Users Integration Tests', () => {
     });
   });
 
-  describe('Query.user', () => {
-    it('should return user by ID', async () => {
+  describe("Query.user", () => {
+    it("should return user by ID", async () => {
       const testUser = await createTestUser({
-        username: 'testuser',
-        email: 'test@example.com',
-        passwordHash: 'hash',
+        username: "testuser",
+        email: "test@example.com",
+        passwordHash: "hash",
       });
 
       const response = await graphql.query(
@@ -133,12 +121,12 @@ describe('GraphQL Users Integration Tests', () => {
       const result = await testUtils.parseGraphQLResponse(response);
       expect(result.errors).toBeUndefined();
       expect(result.data.user).toBeDefined();
-      expect(result.data.user.username).toBe('testuser');
-      expect(result.data.user.email).toBe('test@example.com');
-      expect(result.data.user).not.toHaveProperty('passwordHash');
+      expect(result.data.user.username).toBe("testuser");
+      expect(result.data.user.email).toBe("test@example.com");
+      expect(result.data.user).not.toHaveProperty("passwordHash");
     });
 
-    it('should return null for non-existent user', async () => {
+    it("should return null for non-existent user", async () => {
       const response = await graphql.query(`
         query {
           user(id: "99999") {
@@ -154,27 +142,27 @@ describe('GraphQL Users Integration Tests', () => {
     });
   });
 
-  describe('Query.searchUsers', () => {
+  describe("Query.searchUsers", () => {
     beforeEach(async () => {
       // Create test users for search
       await createTestUser({
-        username: 'john_doe',
-        email: 'john@example.com',
-        passwordHash: 'hash1',
+        username: "john_doe",
+        email: "john@example.com",
+        passwordHash: "hash1",
       });
       await createTestUser({
-        username: 'jane_smith',
-        email: 'jane@example.com',
-        passwordHash: 'hash2',
+        username: "jane_smith",
+        email: "jane@example.com",
+        passwordHash: "hash2",
       });
       await createTestUser({
-        username: 'bob_johnson',
-        email: 'bob@example.com',
-        passwordHash: 'hash3',
+        username: "bob_johnson",
+        email: "bob@example.com",
+        passwordHash: "hash3",
       });
     });
 
-    it('should search users by username', async () => {
+    it("should search users by username", async () => {
       const response = await graphql.query(
         `
         query SearchUsers($query: String!) {
@@ -185,18 +173,18 @@ describe('GraphQL Users Integration Tests', () => {
           }
         }
       `,
-        { query: 'john' }
+        { query: "john" }
       );
 
       const result = await testUtils.parseGraphQLResponse(response);
       expect(result.errors).toBeUndefined();
       expect(result.data.searchUsers).toHaveLength(2);
       const usernames = result.data.searchUsers.map((u: any) => u.username);
-      expect(usernames).toContain('john_doe');
-      expect(usernames).toContain('bob_johnson');
+      expect(usernames).toContain("john_doe");
+      expect(usernames).toContain("bob_johnson");
     });
 
-    it('should return empty array for no matches', async () => {
+    it("should return empty array for no matches", async () => {
       const response = await graphql.query(`
         query {
           searchUsers(query: "nonexistent", limit: 10) {
@@ -211,7 +199,7 @@ describe('GraphQL Users Integration Tests', () => {
       expect(result.data.searchUsers).toEqual([]);
     });
 
-    it('should reject queries shorter than 2 characters', async () => {
+    it("should reject queries shorter than 2 characters", async () => {
       const response = await graphql.query(`
         query {
           searchUsers(query: "a", limit: 10) {
@@ -223,38 +211,34 @@ describe('GraphQL Users Integration Tests', () => {
 
       const result = await testUtils.parseGraphQLResponse(response);
       expect(result.errors).toBeDefined();
-      expect(result.errors[0].message).toContain(
-        'must be at least 2 characters'
-      );
+      expect(result.errors[0].message).toContain("must be at least 2 characters");
     });
   });
 
-  describe('Mutation.updateUser', () => {
+  describe("Mutation.updateUser", () => {
     let testUser: any;
     let authToken: string;
 
     beforeEach(async () => {
       testUser = await createTestUser({
-        username: 'testuser',
-        email: 'test@example.com',
-        passwordHash: 'hash',
+        username: "testuser",
+        email: "test@example.com",
+        passwordHash: "hash",
       });
 
       // Login to get auth token (using REST API for auth)
-      const loginResponse = await testUtils
-        .createAgent(app)
-        .post('/auth/login', {
-          usernameOrEmail: 'testuser',
-          password: 'TestPassword123!', // This should match the hash, but for testing we'll use a different approach
-        });
+      const loginResponse = await testUtils.createAgent(app).post("/auth/login", {
+        usernameOrEmail: "testuser",
+        password: "TestPassword123!", // This should match the hash, but for testing we'll use a different approach
+      });
 
       // For GraphQL testing, we'll create a JWT token manually
-      const { AuthUtils } = await import('@/utils/auth');
+      const { AuthUtils } = await import("@/utils/auth");
       const session = await AuthUtils.createAuthSession(testUser);
       authToken = session.tokens.accessToken;
     });
 
-    it('should update user profile', async () => {
+    it("should update user profile", async () => {
       const response = await graphql.mutation(
         `
         mutation UpdateUser($userId: ID!, $input: UpdateUserInput!) {
@@ -268,8 +252,8 @@ describe('GraphQL Users Integration Tests', () => {
         {
           userId: testUser.id.toString(),
           input: {
-            username: 'updated_username',
-            email: 'updated@example.com',
+            username: "updated_username",
+            email: "updated@example.com",
           },
         },
         authToken
@@ -277,15 +261,15 @@ describe('GraphQL Users Integration Tests', () => {
 
       const result = await testUtils.parseGraphQLResponse(response);
       expect(result.errors).toBeUndefined();
-      expect(result.data.updateUser.username).toBe('updated_username');
-      expect(result.data.updateUser.email).toBe('updated@example.com');
+      expect(result.data.updateUser.username).toBe("updated_username");
+      expect(result.data.updateUser.email).toBe("updated@example.com");
     });
 
-    it('should prevent updating other users', async () => {
+    it("should prevent updating other users", async () => {
       const otherUser = await createTestUser({
-        username: 'otheruser',
-        email: 'other@example.com',
-        passwordHash: 'hash2',
+        username: "otheruser",
+        email: "other@example.com",
+        passwordHash: "hash2",
       });
 
       const response = await graphql.mutation(
@@ -302,14 +286,14 @@ describe('GraphQL Users Integration Tests', () => {
 
       const result = await testUtils.parseGraphQLResponse(response);
       expect(result.errors).toBeDefined();
-      expect(result.errors[0].message).toContain('Unauthorized');
+      expect(result.errors[0].message).toContain("Unauthorized");
     });
 
-    it('should prevent duplicate usernames', async () => {
+    it("should prevent duplicate usernames", async () => {
       await createTestUser({
-        username: 'existing_user',
-        email: 'existing@example.com',
-        passwordHash: 'hash3',
+        username: "existing_user",
+        email: "existing@example.com",
+        passwordHash: "hash3",
       });
 
       const response = await graphql.mutation(
@@ -326,28 +310,28 @@ describe('GraphQL Users Integration Tests', () => {
 
       const result = await testUtils.parseGraphQLResponse(response);
       expect(result.errors).toBeDefined();
-      expect(result.errors[0].message).toContain('Username already exists');
+      expect(result.errors[0].message).toContain("Username already exists");
     });
   });
 
-  describe('Mutation.deleteUser', () => {
+  describe("Mutation.deleteUser", () => {
     let testUser: any;
     let authToken: string;
 
     beforeEach(async () => {
       testUser = await createTestUser({
-        username: 'testuser',
-        email: 'test@example.com',
-        passwordHash: 'hash',
+        username: "testuser",
+        email: "test@example.com",
+        passwordHash: "hash",
       });
 
       // Create JWT token for auth
-      const { AuthUtils } = await import('@/utils/auth');
+      const { AuthUtils } = await import("@/utils/auth");
       const session = await AuthUtils.createAuthSession(testUser);
       authToken = session.tokens.accessToken;
     });
 
-    it('should delete user account', async () => {
+    it("should delete user account", async () => {
       const response = await graphql.mutation(
         `
         mutation DeleteUser($userId: ID!) {
@@ -378,11 +362,11 @@ describe('GraphQL Users Integration Tests', () => {
       expect(checkResult.data.user).toBeNull();
     });
 
-    it('should prevent deleting other users', async () => {
+    it("should prevent deleting other users", async () => {
       const otherUser = await createTestUser({
-        username: 'otheruser',
-        email: 'other@example.com',
-        passwordHash: 'hash2',
+        username: "otheruser",
+        email: "other@example.com",
+        passwordHash: "hash2",
       });
 
       const response = await graphql.mutation(
@@ -397,7 +381,7 @@ describe('GraphQL Users Integration Tests', () => {
 
       const result = await testUtils.parseGraphQLResponse(response);
       expect(result.errors).toBeDefined();
-      expect(result.errors[0].message).toContain('Unauthorized');
+      expect(result.errors[0].message).toContain("Unauthorized");
     });
   });
 });

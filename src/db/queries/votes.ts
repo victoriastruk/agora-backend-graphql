@@ -1,6 +1,6 @@
-import { eq, and } from 'drizzle-orm';
-import { db } from '@/db/client';
-import { votes } from '@/db/schema';
+import { eq, and } from "drizzle-orm";
+import { db } from "@/db/client";
+import { votes } from "@/db/schema";
 
 export const voteQueries = {
   async getUserVoteOnPost(userId: number, postId: number) {

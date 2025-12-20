@@ -1,12 +1,12 @@
-import pino from 'pino';
-import { AsyncLocalStorage } from 'async_hooks';
-import { env } from '@/shared/config/env';
+import pino from "pino";
+import { AsyncLocalStorage } from "async_hooks";
+import { env } from "@/shared/config/env";
 
 const createLoggerConfig = () => {
-  const isDevelopment = env.NODE_ENV === 'development';
+  const isDevelopment = env.NODE_ENV === "development";
 
   return {
-    level: isDevelopment ? 'debug' : 'info',
+    level: isDevelopment ? "debug" : "info",
     formatters: {
       level: (label: string) => ({ level: label }),
       log: (obj: any) => {
@@ -24,12 +24,12 @@ const createLoggerConfig = () => {
     },
     ...(isDevelopment && {
       transport: {
-        target: 'pino-pretty',
+        target: "pino-pretty",
         options: {
           colorize: true,
-          translateTime: 'SYS:standard',
-          ignore: 'pid,hostname',
-          messageFormat: '{level} {msg}',
+          translateTime: "SYS:standard",
+          ignore: "pid,hostname",
+          messageFormat: "{level} {msg}",
         },
       },
     }),
@@ -42,7 +42,7 @@ const asyncLocalStorage = new AsyncLocalStorage<Map<string, any>>();
 
 function getRequestId(): string | undefined {
   const store = asyncLocalStorage.getStore();
-  return store?.get('requestId');
+  return store?.get("requestId");
 }
 
 interface RequestContext {
@@ -72,16 +72,16 @@ export class Logger {
 
   startRequest(context: RequestContext): { run: <T>(fn: () => T) => T } {
     const store = new Map();
-    store.set('requestId', context.requestId);
-    store.set('method', context.method);
-    store.set('url', context.url);
-    store.set('userId', context.userId);
-    store.set('ip', context.ip);
+    store.set("requestId", context.requestId);
+    store.set("method", context.method);
+    store.set("url", context.url);
+    store.set("userId", context.userId);
+    store.set("ip", context.ip);
 
     return {
       run: <T>(fn: () => T): T => {
         return asyncLocalStorage.run(store, () => {
-          this.info('Request started', {
+          this.info("Request started", {
             method: context.method,
             url: context.url,
             userId: context.userId,
@@ -102,10 +102,7 @@ export class Logger {
   }
 
   error(message: string, error?: Error | any): void {
-    const logData =
-      error instanceof Error
-        ? { error: pino.stdSerializers.err(error) }
-        : { error };
+    const logData = error instanceof Error ? { error: pino.stdSerializers.err(error) } : { error };
 
     this.logger.error(logData, message);
   }
@@ -129,23 +126,18 @@ export class Logger {
       url: req.url,
       statusCode: res.statusCode,
       responseTime: responseTime ? `${responseTime}ms` : undefined,
-      userAgent: req.headers['user-agent'],
+      userAgent: req.headers["user-agent"],
       ip: req.ip || req.connection?.remoteAddress,
     };
 
     if (res.statusCode >= 400) {
-      this.warn('Request completed with error', logData);
+      this.warn("Request completed with error", logData);
     } else {
-      this.info('Request completed', logData);
+      this.info("Request completed", logData);
     }
   }
 
-  logDatabase(
-    operation: string,
-    table: string,
-    duration?: number,
-    error?: any
-  ): void {
+  logDatabase(operation: string, table: string, duration?: number, error?: any): void {
     const logData = {
       operation,
       table,
@@ -159,8 +151,8 @@ export class Logger {
     }
   }
 
-  logServerStart(port: number, host: string = 'localhost'): void {
-    this.info('🚀 Server starting...', { port, host });
+  logServerStart(port: number, host: string = "localhost"): void {
+    this.info("🚀 Server starting...", { port, host });
     this.info(`📍 Server: http://${host}:${port}`);
     this.info(`📚 API Docs: http://${host}:${port}/docs`);
     this.info(`🔗 GraphQL: http://${host}:${port}/graphql`);
@@ -168,7 +160,7 @@ export class Logger {
   }
 
   logServerShutdown(): void {
-    this.info('Server is shutting down...');
+    this.info("Server is shutting down...");
   }
 }
 

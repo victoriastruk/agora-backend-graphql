@@ -1,7 +1,7 @@
-import { eq } from 'drizzle-orm';
-import { db } from '@/db/client';
-import { flairs } from '@/db/schema';
-import type { Flair, NewFlair } from '@/db/schema';
+import { eq } from "drizzle-orm";
+import { db } from "@/db/client";
+import { flairs } from "@/db/schema";
+import type { Flair, NewFlair } from "@/db/schema";
 
 export const flairQueries = {
   async getByCommunity(communityId: number): Promise<Flair[]> {
@@ -13,11 +13,7 @@ export const flairQueries = {
   },
 
   async getById(id: number): Promise<Flair | null> {
-    const result = await db
-      .select()
-      .from(flairs)
-      .where(eq(flairs.id, id))
-      .limit(1);
+    const result = await db.select().from(flairs).where(eq(flairs.id, id)).limit(1);
     return result[0] || null;
   },
 
@@ -27,11 +23,7 @@ export const flairQueries = {
   },
 
   async update(id: number, data: Partial<Flair>): Promise<Flair | null> {
-    const result = await db
-      .update(flairs)
-      .set(data)
-      .where(eq(flairs.id, id))
-      .returning();
+    const result = await db.update(flairs).set(data).where(eq(flairs.id, id)).returning();
     return result[0] || null;
   },
 

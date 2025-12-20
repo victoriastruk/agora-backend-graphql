@@ -1,7 +1,7 @@
-import { beforeAll, afterAll } from 'bun:test';
+import { beforeAll, afterAll } from "bun:test";
 
 // Set test environment
-process.env.NODE_ENV = 'test';
+process.env.NODE_ENV = "test";
 
 // Try to setup test database, but don't fail if it's not available
 // Individual test files that need database will call setupTestDb themselves

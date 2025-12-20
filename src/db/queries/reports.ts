@@ -1,15 +1,11 @@
-import { eq, and, desc, isNull, isNotNull } from 'drizzle-orm';
-import { db } from '@/db/client';
-import { reports } from '@/db/schema';
-import type { Report, NewReport } from '@/db/schema';
+import { eq, and, desc, isNull, isNotNull } from "drizzle-orm";
+import { db } from "@/db/client";
+import { reports } from "@/db/schema";
+import type { Report, NewReport } from "@/db/schema";
 
 export const reportQueries = {
   async getById(id: number): Promise<Report | null> {
-    const result = await db
-      .select()
-      .from(reports)
-      .where(eq(reports.id, id))
-      .limit(1);
+    const result = await db.select().from(reports).where(eq(reports.id, id)).limit(1);
     return result[0] || null;
   },
 
@@ -52,17 +48,13 @@ export const reportQueries = {
     return await db
       .select()
       .from(reports)
-      .where(eq(reports.status, 'pending'))
+      .where(eq(reports.status, "pending"))
       .orderBy(desc(reports.createdAt))
       .limit(limit)
       .offset(offset);
   },
 
-  async getByCommunity(
-    communityId: number,
-    limit = 20,
-    offset = 0
-  ): Promise<Report[]> {
+  async getByCommunity(communityId: number, limit = 20, offset = 0): Promise<Report[]> {
     // This requires a join with posts to get reports for a specific community
     // For now, we'll implement this as a simple query
     return await db
@@ -79,30 +71,18 @@ export const reportQueries = {
     return result[0];
   },
 
-  async updateStatus(
-    id: number,
-    status: string,
-    resolvedBy?: number
-  ): Promise<Report | null> {
+  async updateStatus(id: number, status: string, resolvedBy?: number): Promise<Report | null> {
     const updateData: Partial<Report> = { status };
     if (resolvedBy) {
       updateData.resolvedBy = resolvedBy;
       updateData.resolvedAt = new Date();
     }
 
-    const result = await db
-      .update(reports)
-      .set(updateData)
-      .where(eq(reports.id, id))
-      .returning();
+    const result = await db.update(reports).set(updateData).where(eq(reports.id, id)).returning();
     return result[0] || null;
   },
 
-  async canUserReport(
-    userId: number,
-    postId?: number,
-    commentId?: number
-  ): Promise<boolean> {
+  async canUserReport(userId: number, postId?: number, commentId?: number): Promise<boolean> {
     const conditions = [eq(reports.reporterId, userId)];
 
     if (postId) {
@@ -122,10 +102,7 @@ export const reportQueries = {
   },
 
   async delete(id: number): Promise<boolean> {
-    const result = await db
-      .delete(reports)
-      .where(eq(reports.id, id))
-      .returning();
+    const result = await db.delete(reports).where(eq(reports.id, id)).returning();
     return result.length > 0;
   },
 };

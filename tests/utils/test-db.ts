@@ -1,9 +1,9 @@
-import { drizzle } from 'drizzle-orm/postgres-js';
-import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
-import * as schema from '@/db/schema';
-import { eq } from 'drizzle-orm';
-import { setDbInstance } from '@/db/client';
+import { drizzle } from "drizzle-orm/postgres-js";
+import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
+import * as schema from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { setDbInstance } from "@/db/client";
 
 let client: postgres.Sql | null = null;
 let db: PostgresJsDatabase<typeof schema> | null = null;
@@ -13,12 +13,10 @@ const getTestDatabaseUrl = (): string => {
     return process.env.TEST_DATABASE_URL;
   }
 
-  return 'postgresql://postgres:pass@localhost:5432/reddit-server';
+  return "postgresql://postgres:pass@localhost:5432/reddit-server";
 };
 
-export const setupTestDb = async (): Promise<
-  PostgresJsDatabase<typeof schema>
-> => {
+export const setupTestDb = async (): Promise<PostgresJsDatabase<typeof schema>> => {
   const dbUrl = getTestDatabaseUrl();
 
   try {
@@ -59,10 +57,10 @@ export const setupTestDb = async (): Promise<
 
     return db;
   } catch (error) {
-    console.error('Failed to setup test database:', error);
+    console.error("Failed to setup test database:", error);
     throw new Error(
       `Failed to connect to test database. Please ensure PostgreSQL is running.\n` +
-        `Connection string: ${dbUrl.replace(/:[^:@]+@/, ':****@')}\n` +
+        `Connection string: ${dbUrl.replace(/:[^:@]+@/, ":****@")}\n` +
         `Try running: docker compose up -d`
     );
   }
@@ -75,8 +73,8 @@ export const teardownTestDb = async (): Promise<void> => {
       client = null;
       db = null;
     } catch (error: any) {
-      if (process.env.NODE_ENV !== 'test') {
-        console.error('Error during database teardown:', error);
+      if (process.env.NODE_ENV !== "test") {
+        console.error("Error during database teardown:", error);
       }
     }
   }
@@ -91,8 +89,8 @@ export const clearTestDb = async (): Promise<void> => {
     await db.delete(schema.communities).catch(() => {});
     await db.delete(schema.users).catch(() => {});
   } catch (error) {
-    if (error instanceof Error && !error.message.includes('CONNECTION_ENDED')) {
-      if (!error.message.includes('connection')) {
+    if (error instanceof Error && !error.message.includes("CONNECTION_ENDED")) {
+      if (!error.message.includes("connection")) {
         throw error;
       }
     }
@@ -104,7 +102,7 @@ export const createTestUser = async (userData: {
   email: string;
   passwordHash: string;
 }) => {
-  if (!db) throw new Error('Test database not initialized');
+  if (!db) throw new Error("Test database not initialized");
 
   const result = await db
     .insert(schema.users)
@@ -119,21 +117,17 @@ export const createTestUser = async (userData: {
 };
 
 export const getTestUser = async (id: number) => {
-  if (!db) throw new Error('Test database not initialized');
+  if (!db) throw new Error("Test database not initialized");
 
-  const result = await db
-    .select()
-    .from(schema.users)
-    .where(eq(schema.users.id, id))
-    .limit(1);
+  const result = await db.select().from(schema.users).where(eq(schema.users.id, id)).limit(1);
 
   return result[0] || null;
 };
 
 export const getAllTestUsers = async () => {
-  if (!db) throw new Error('Test database not initialized');
+  if (!db) throw new Error("Test database not initialized");
 
-  return await db.select().from(schema.users);
+  return db.select().from(schema.users);
 };
 
 export const createTestSession = async (sessionData: {
@@ -141,7 +135,7 @@ export const createTestSession = async (sessionData: {
   userId: number;
   expiresAt: Date;
 }) => {
-  if (!db) throw new Error('Test database not initialized');
+  if (!db) throw new Error("Test database not initialized");
 
   const result = await db
     .insert(schema.sessions)
@@ -163,7 +157,7 @@ export const createTestCommunity = async (communityData: {
   bannerUrl?: string;
   memberCount?: number;
 }) => {
-  if (!db) throw new Error('Test database not initialized');
+  if (!db) throw new Error("Test database not initialized");
 
   const result = await db
     .insert(schema.communities)

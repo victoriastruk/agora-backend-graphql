@@ -1,8 +1,8 @@
-import { drizzle } from 'drizzle-orm/postgres-js';
-import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
-import { env } from '@/shared/config/env';
-import * as schema from './schema';
+import { drizzle } from "drizzle-orm/postgres-js";
+import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
+import { env } from "@/shared/config/env";
+import * as schema from "./schema";
 
 let client: postgres.Sql;
 let dbInstance: PostgresJsDatabase<typeof schema> | null = null;
@@ -33,12 +33,12 @@ export const db = new Proxy({} as PostgresJsDatabase<typeof schema>, {
 export const closeDbConnection = async (): Promise<void> => {
   try {
     await client.end();
-    console.log('Database connection closed gracefully');
+    console.log("Database connection closed gracefully");
   } catch (error) {
-    console.error('Error closing database connection:', error);
+    console.error("Error closing database connection:", error);
     process.exit(1);
   }
 };
 
-process.on('SIGINT', closeDbConnection);
-process.on('SIGTERM', closeDbConnection);
+process.on("SIGINT", closeDbConnection);
+process.on("SIGTERM", closeDbConnection);

@@ -1,11 +1,11 @@
-import { Elysia, t } from 'elysia';
-import { AuthUtils, type CookieStore } from '@/utils/auth';
-import { AuthQueries } from '@/db/queries/auth';
-import { ResponseUtils } from '@/utils/ResponseUtils';
+import { Elysia, t } from "elysia";
+import { AuthUtils, type CookieStore } from "@/utils/auth";
+import { AuthQueries } from "@/db/queries/auth";
+import { ResponseUtils } from "@/utils/ResponseUtils";
 
-export const authController = new Elysia({ prefix: '/auth' })
+export const authController = new Elysia({ prefix: "/auth" })
   .post(
-    '/register',
+    "/register",
     async ({ body, set, cookie }) => {
       try {
         const { username, email, password } = body;
@@ -16,7 +16,7 @@ export const authController = new Elysia({ prefix: '/auth' })
 
         if (userExists) {
           set.status = 409;
-          return ResponseUtils.error('User already exists', 409);
+          return ResponseUtils.error("User already exists", 409);
         }
 
         const passwordHash = await AuthUtils.hashPassword(password);
@@ -38,20 +38,20 @@ export const authController = new Elysia({ prefix: '/auth' })
         };
 
         set.status = 201;
-        return ResponseUtils.success('User registered successfully', {
+        return ResponseUtils.success("User registered successfully", {
           user: formattedUser,
         });
       } catch (error) {
         const err = error as Error;
-        console.error('Registration error:', err);
+        console.error("Registration error:", err);
 
-        if (err.name === 'ZodError') {
+        if (err.name === "ZodError") {
           set.status = 400;
-          return ResponseUtils.error('Invalid input data', 400);
+          return ResponseUtils.error("Invalid input data", 400);
         }
 
         set.status = 500;
-        return ResponseUtils.error('Internal server error', 500);
+        return ResponseUtils.error("Internal server error", 500);
       }
     },
     {
@@ -59,40 +59,40 @@ export const authController = new Elysia({ prefix: '/auth' })
         username: t.String({
           minLength: 3,
           maxLength: 30,
-          pattern: '^[a-zA-Z0-9_]+$',
+          pattern: "^[a-zA-Z0-9_]+$",
         }),
-        email: t.String({ format: 'email' }),
+        email: t.String({ format: "email" }),
         password: t.String({ minLength: 6 }),
       }),
       detail: {
-        tags: ['Authentication'],
-        summary: 'Register and login user',
+        tags: ["Authentication"],
+        summary: "Register and login user",
         responses: {
           201: {
-            description: 'User registered successfully',
+            description: "User registered successfully",
             content: {
-              'application/json': {
+              "application/json": {
                 schema: {
-                  type: 'object',
+                  type: "object",
                   properties: {
-                    success: { type: 'boolean', example: true },
+                    success: { type: "boolean", example: true },
                     message: {
-                      type: 'string',
-                      example: 'User registered successfully',
+                      type: "string",
+                      example: "User registered successfully",
                     },
                     data: {
-                      type: 'object',
+                      type: "object",
                       properties: {
                         user: {
-                          type: 'object',
+                          type: "object",
                           properties: {
-                            id: { type: 'integer', example: 1 },
-                            username: { type: 'string', example: 'john_doe' },
+                            id: { type: "integer", example: 1 },
+                            username: { type: "string", example: "john_doe" },
                             email: {
-                              type: 'string',
-                              example: 'john@example.com',
+                              type: "string",
+                              example: "john@example.com",
                             },
-                            createdAt: { type: 'string', format: 'date-time' },
+                            createdAt: { type: "string", format: "date-time" },
                           },
                         },
                       },
@@ -103,44 +103,44 @@ export const authController = new Elysia({ prefix: '/auth' })
             },
           },
           400: {
-            description: 'Invalid input data',
+            description: "Invalid input data",
             content: {
-              'application/json': {
+              "application/json": {
                 schema: {
-                  type: 'object',
+                  type: "object",
                   properties: {
-                    success: { type: 'boolean', example: false },
-                    message: { type: 'string', example: 'Invalid input data' },
+                    success: { type: "boolean", example: false },
+                    message: { type: "string", example: "Invalid input data" },
                   },
                 },
               },
             },
           },
           409: {
-            description: 'User already exists',
+            description: "User already exists",
             content: {
-              'application/json': {
+              "application/json": {
                 schema: {
-                  type: 'object',
+                  type: "object",
                   properties: {
-                    success: { type: 'boolean', example: false },
-                    message: { type: 'string', example: 'User already exists' },
+                    success: { type: "boolean", example: false },
+                    message: { type: "string", example: "User already exists" },
                   },
                 },
               },
             },
           },
           500: {
-            description: 'Internal server error',
+            description: "Internal server error",
             content: {
-              'application/json': {
+              "application/json": {
                 schema: {
-                  type: 'object',
+                  type: "object",
                   properties: {
-                    success: { type: 'boolean', example: false },
+                    success: { type: "boolean", example: false },
                     message: {
-                      type: 'string',
-                      example: 'Internal server error',
+                      type: "string",
+                      example: "Internal server error",
                     },
                   },
                 },
@@ -152,19 +152,15 @@ export const authController = new Elysia({ prefix: '/auth' })
     }
   )
   .post(
-    '/login',
+    "/login",
     async ({ body, set, cookie }) => {
       try {
         const { usernameOrEmail, password } = body;
 
-        const user =
-          await AuthQueries.findUserByUsernameOrEmail(usernameOrEmail);
-        if (
-          !user ||
-          !(await AuthUtils.verifyPassword(user.passwordHash, password))
-        ) {
+        const user = await AuthQueries.findUserByUsernameOrEmail(usernameOrEmail);
+        if (!user || !(await AuthUtils.verifyPassword(user.passwordHash, password))) {
           set.status = 401;
-          return ResponseUtils.error('Invalid credentials', 401);
+          return ResponseUtils.error("Invalid credentials", 401);
         }
 
         const session = await AuthUtils.createAuthSession(user);
@@ -179,13 +175,13 @@ export const authController = new Elysia({ prefix: '/auth' })
         };
 
         set.status = 200;
-        return ResponseUtils.success('Login successful', {
+        return ResponseUtils.success("Login successful", {
           user: formattedUser,
         });
       } catch (error) {
-        console.error('Login error:', error);
+        console.error("Login error:", error);
         set.status = 500;
-        return ResponseUtils.error('Internal server error', 500);
+        return ResponseUtils.error("Internal server error", 500);
       }
     },
     {
@@ -194,31 +190,31 @@ export const authController = new Elysia({ prefix: '/auth' })
         password: t.String({ minLength: 6 }),
       }),
       detail: {
-        tags: ['Authentication'],
-        summary: 'Login user',
+        tags: ["Authentication"],
+        summary: "Login user",
         responses: {
           200: {
-            description: 'Login successful',
+            description: "Login successful",
             content: {
-              'application/json': {
+              "application/json": {
                 schema: {
-                  type: 'object',
+                  type: "object",
                   properties: {
-                    success: { type: 'boolean', example: true },
-                    message: { type: 'string', example: 'Login successful' },
+                    success: { type: "boolean", example: true },
+                    message: { type: "string", example: "Login successful" },
                     data: {
-                      type: 'object',
+                      type: "object",
                       properties: {
                         user: {
-                          type: 'object',
+                          type: "object",
                           properties: {
-                            id: { type: 'integer', example: 1 },
-                            username: { type: 'string', example: 'john_doe' },
+                            id: { type: "integer", example: 1 },
+                            username: { type: "string", example: "john_doe" },
                             email: {
-                              type: 'string',
-                              example: 'john@example.com',
+                              type: "string",
+                              example: "john@example.com",
                             },
-                            createdAt: { type: 'string', format: 'date-time' },
+                            createdAt: { type: "string", format: "date-time" },
                           },
                         },
                       },
@@ -229,30 +225,30 @@ export const authController = new Elysia({ prefix: '/auth' })
             },
           },
           401: {
-            description: 'Invalid credentials',
+            description: "Invalid credentials",
             content: {
-              'application/json': {
+              "application/json": {
                 schema: {
-                  type: 'object',
+                  type: "object",
                   properties: {
-                    success: { type: 'boolean', example: false },
-                    message: { type: 'string', example: 'Invalid credentials' },
+                    success: { type: "boolean", example: false },
+                    message: { type: "string", example: "Invalid credentials" },
                   },
                 },
               },
             },
           },
           500: {
-            description: 'Internal server error',
+            description: "Internal server error",
             content: {
-              'application/json': {
+              "application/json": {
                 schema: {
-                  type: 'object',
+                  type: "object",
                   properties: {
-                    success: { type: 'boolean', example: false },
+                    success: { type: "boolean", example: false },
                     message: {
-                      type: 'string',
-                      example: 'Internal server error',
+                      type: "string",
+                      example: "Internal server error",
                     },
                   },
                 },
@@ -265,12 +261,12 @@ export const authController = new Elysia({ prefix: '/auth' })
   )
 
   .post(
-    '/logout',
+    "/logout",
     async ({ cookie, set }) => {
       try {
         const refreshToken = cookie.refreshToken?.value;
 
-        if (refreshToken && typeof refreshToken === 'string') {
+        if (refreshToken && typeof refreshToken === "string") {
           await AuthUtils.revokeRefreshTokenByToken(refreshToken);
         }
 
@@ -279,47 +275,47 @@ export const authController = new Elysia({ prefix: '/auth' })
         set.status = 200;
         return {
           success: true,
-          message: 'Logout successful',
+          message: "Logout successful",
         };
       } catch (error) {
-        console.error('Logout error:', error);
+        console.error("Logout error:", error);
         set.status = 500;
         return {
           success: false,
-          message: 'Internal server error',
+          message: "Internal server error",
         };
       }
     },
     {
       detail: {
-        tags: ['Authentication'],
-        summary: 'Logout user',
+        tags: ["Authentication"],
+        summary: "Logout user",
         responses: {
           200: {
-            description: 'Logout successful',
+            description: "Logout successful",
             content: {
-              'application/json': {
+              "application/json": {
                 schema: {
-                  type: 'object',
+                  type: "object",
                   properties: {
-                    success: { type: 'boolean', example: true },
-                    message: { type: 'string', example: 'Logout successful' },
+                    success: { type: "boolean", example: true },
+                    message: { type: "string", example: "Logout successful" },
                   },
                 },
               },
             },
           },
           500: {
-            description: 'Internal server error',
+            description: "Internal server error",
             content: {
-              'application/json': {
+              "application/json": {
                 schema: {
-                  type: 'object',
+                  type: "object",
                   properties: {
-                    success: { type: 'boolean', example: false },
+                    success: { type: "boolean", example: false },
                     message: {
-                      type: 'string',
-                      example: 'Internal server error',
+                      type: "string",
+                      example: "Internal server error",
                     },
                   },
                 },
@@ -332,47 +328,40 @@ export const authController = new Elysia({ prefix: '/auth' })
   )
 
   .get(
-    '/me',
+    "/me",
     async ({ cookie, set }) => {
       try {
         const accessToken = cookie.accessToken?.value;
         const refreshToken = cookie.refreshToken?.value;
 
         const accessVerification = await AuthUtils.verifyAccessToken(
-          typeof accessToken === 'string' ? accessToken : undefined
+          typeof accessToken === "string" ? accessToken : undefined
         );
 
         let userId: number | null = null;
         let refreshTokenIdToRevoke: string | undefined;
 
-        if (
-          accessVerification.status === 'valid' &&
-          accessVerification.payload
-        ) {
+        if (accessVerification.status === "valid" && accessVerification.payload) {
           userId = Number(accessVerification.payload.sub);
         } else if (
-          accessVerification.status === 'expired' &&
+          accessVerification.status === "expired" &&
           refreshToken &&
-          typeof refreshToken === 'string'
+          typeof refreshToken === "string"
         ) {
-          const refreshVerification =
-            await AuthUtils.verifyRefreshToken(refreshToken);
+          const refreshVerification = await AuthUtils.verifyRefreshToken(refreshToken);
 
-          if (
-            refreshVerification.status === 'valid' &&
-            refreshVerification.payload
-          ) {
+          if (refreshVerification.status === "valid" && refreshVerification.payload) {
             userId = Number(refreshVerification.payload.sub);
             refreshTokenIdToRevoke = refreshVerification.payload.jti;
           } else {
             AuthUtils.clearAuthCookies(cookie as CookieStore);
             set.status = 401;
-            return ResponseUtils.error('Session expired', 401);
+            return ResponseUtils.error("Session expired", 401);
           }
         } else {
           AuthUtils.clearAuthCookies(cookie as CookieStore);
           set.status = 401;
-          return ResponseUtils.error('Not authenticated', 401);
+          return ResponseUtils.error("Not authenticated", 401);
         }
 
         const user = userId ? await AuthQueries.findUserById(userId) : null;
@@ -380,7 +369,7 @@ export const authController = new Elysia({ prefix: '/auth' })
         if (!user) {
           AuthUtils.clearAuthCookies(cookie as CookieStore);
           set.status = 401;
-          return ResponseUtils.error('User not found', 401);
+          return ResponseUtils.error("User not found", 401);
         }
 
         if (refreshTokenIdToRevoke) {
@@ -397,46 +386,46 @@ export const authController = new Elysia({ prefix: '/auth' })
             ? new Date(userResponse.createdAt).toISOString()
             : undefined,
         };
-        return ResponseUtils.success('User authenticated', {
+        return ResponseUtils.success("User authenticated", {
           user: formattedUser,
         });
       } catch (error) {
-        console.error('Auth check error:', error);
+        console.error("Auth check error:", error);
         set.status = 500;
         return {
           success: false,
-          message: 'Internal server error',
+          message: "Internal server error",
           data: null,
         };
       }
     },
     {
       detail: {
-        tags: ['Authentication'],
-        summary: 'Get current user',
+        tags: ["Authentication"],
+        summary: "Get current user",
         responses: {
           200: {
-            description: 'User authenticated',
+            description: "User authenticated",
             content: {
-              'application/json': {
+              "application/json": {
                 schema: {
-                  type: 'object',
+                  type: "object",
                   properties: {
-                    success: { type: 'boolean', example: true },
-                    message: { type: 'string', example: 'User authenticated' },
+                    success: { type: "boolean", example: true },
+                    message: { type: "string", example: "User authenticated" },
                     data: {
-                      type: 'object',
+                      type: "object",
                       properties: {
                         user: {
-                          type: 'object',
+                          type: "object",
                           properties: {
-                            id: { type: 'integer', example: 1 },
-                            username: { type: 'string', example: 'john_doe' },
+                            id: { type: "integer", example: 1 },
+                            username: { type: "string", example: "john_doe" },
                             email: {
-                              type: 'string',
-                              example: 'john@example.com',
+                              type: "string",
+                              example: "john@example.com",
                             },
-                            createdAt: { type: 'string', format: 'date-time' },
+                            createdAt: { type: "string", format: "date-time" },
                           },
                         },
                       },
@@ -447,30 +436,30 @@ export const authController = new Elysia({ prefix: '/auth' })
             },
           },
           401: {
-            description: 'Not authenticated',
+            description: "Not authenticated",
             content: {
-              'application/json': {
+              "application/json": {
                 schema: {
-                  type: 'object',
+                  type: "object",
                   properties: {
-                    success: { type: 'boolean', example: false },
-                    message: { type: 'string', example: 'Not authenticated' },
+                    success: { type: "boolean", example: false },
+                    message: { type: "string", example: "Not authenticated" },
                   },
                 },
               },
             },
           },
           500: {
-            description: 'Internal server error',
+            description: "Internal server error",
             content: {
-              'application/json': {
+              "application/json": {
                 schema: {
-                  type: 'object',
+                  type: "object",
                   properties: {
-                    success: { type: 'boolean', example: false },
+                    success: { type: "boolean", example: false },
                     message: {
-                      type: 'string',
-                      example: 'Internal server error',
+                      type: "string",
+                      example: "Internal server error",
                     },
                   },
                 },

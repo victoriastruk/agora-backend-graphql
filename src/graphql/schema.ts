@@ -1,5 +1,5 @@
-import { makeExecutableSchema } from '@graphql-tools/schema';
-import { resolvers } from './resolvers';
+import { makeExecutableSchema } from "@graphql-tools/schema";
+import { resolvers } from "./resolvers";
 
 const typeDefs = `
   scalar DateTime

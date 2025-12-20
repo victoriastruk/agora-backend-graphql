@@ -1,24 +1,24 @@
-import { eq } from 'drizzle-orm';
-import { db } from '@/db/client';
-import { users, communities, postFlairs, posts, comments } from '@/db/schema';
-import { communityQueries } from '@/db/queries/communities';
-import { postQueries } from '@/db/queries/posts';
-import { commentQueries } from '@/db/queries/comments';
-import { flairQueries } from '@/db/queries/flairs';
-import { reportQueries } from '@/db/queries/reports';
-import { PubSub } from 'graphql-subscriptions';
-import { withFilter } from 'graphql-subscriptions';
-import { GraphQLError } from 'graphql';
-import { AuthQueries } from '@/db/queries/auth';
-import type { User, Post, Comment, Community, Report } from '@/db/schema';
+import { eq } from "drizzle-orm";
+import { db } from "@/db/client";
+import { users, communities, postFlairs, posts, comments } from "@/db/schema";
+import { communityQueries } from "@/db/queries/communities";
+import { postQueries } from "@/db/queries/posts";
+import { commentQueries } from "@/db/queries/comments";
+import { flairQueries } from "@/db/queries/flairs";
+import { reportQueries } from "@/db/queries/reports";
+import { PubSub } from "graphql-subscriptions";
+import { withFilter } from "graphql-subscriptions";
+import { GraphQLError } from "graphql";
+import { AuthQueries } from "@/db/queries/auth";
+import type { User, Post, Comment, Community, Report } from "@/db/schema";
 
 export const pubsub = new PubSub();
 
-export const POST_ADDED = 'POST_ADDED';
-export const POST_UPDATED = 'POST_UPDATED';
-export const POST_VOTED = 'POST_VOTED';
-export const COMMENT_ADDED = 'COMMENT_ADDED';
-export const COMMENT_VOTED = 'COMMENT_VOTED';
+export const POST_ADDED = "POST_ADDED";
+export const POST_UPDATED = "POST_UPDATED";
+export const POST_VOTED = "POST_VOTED";
+export const COMMENT_ADDED = "COMMENT_ADDED";
+export const COMMENT_VOTED = "COMMENT_VOTED";
 
 // Type definitions for GraphQL context
 type GraphQLContext = {
@@ -36,21 +36,18 @@ const getUserId = (context: GraphQLContext): number | undefined => {
 const requireAuth = (context: GraphQLContext): number => {
   const userId = getUserId(context);
   if (!userId) {
-    throw new GraphQLError('Not authenticated', {
-      extensions: { code: 'UNAUTHENTICATED' },
+    throw new GraphQLError("Not authenticated", {
+      extensions: { code: "UNAUTHENTICATED" },
     });
   }
   return userId;
 };
 
-const requireCommunityMembership = async (
-  userId: number,
-  communityId: number
-): Promise<void> => {
+const requireCommunityMembership = async (userId: number, communityId: number): Promise<void> => {
   const isMember = await communityQueries.isMember(userId, communityId);
   if (!isMember) {
-    throw new GraphQLError('Join the community to perform this action', {
-      extensions: { code: 'FORBIDDEN' },
+    throw new GraphQLError("Join the community to perform this action", {
+      extensions: { code: "FORBIDDEN" },
     });
   }
 };
@@ -71,40 +68,30 @@ const getReportCommunityId = async (report: Report): Promise<number | null> => {
   return null;
 };
 
-const canModerateReport = async (
-  userId: number,
-  report: Report
-): Promise<boolean> => {
+const canModerateReport = async (userId: number, report: Report): Promise<boolean> => {
   const communityId = await getReportCommunityId(report);
   if (!communityId) return false;
   return communityQueries.isModerator(userId, communityId);
 };
 
-const ensureCanViewReport = async (
-  userId: number,
-  report: Report
-): Promise<void> => {
+const ensureCanViewReport = async (userId: number, report: Report): Promise<void> => {
   const isReporter = report.reporterId === userId;
   const isModerator = await canModerateReport(userId, report);
 
   if (!isReporter && !isModerator) {
     throw new GraphQLError(
-      'Only moderators of the related community or the reporter can view this report',
-      { extensions: { code: 'FORBIDDEN' } }
+      "Only moderators of the related community or the reporter can view this report",
+      { extensions: { code: "FORBIDDEN" } }
     );
   }
 };
 
-const ensureCanResolveReport = async (
-  userId: number,
-  report: Report
-): Promise<void> => {
+const ensureCanResolveReport = async (userId: number, report: Report): Promise<void> => {
   const isModerator = await canModerateReport(userId, report);
   if (!isModerator) {
-    throw new GraphQLError(
-      'Only moderators of the related community can resolve this report',
-      { extensions: { code: 'FORBIDDEN' } }
-    );
+    throw new GraphQLError("Only moderators of the related community can resolve this report", {
+      extensions: { code: "FORBIDDEN" },
+    });
   }
 };
 
@@ -113,11 +100,7 @@ const enrichPost = async (post: Post, userId?: number) => {
   if (!enrichedPost) return null;
 
   const [community, author] = await Promise.all([
-    db
-      .select()
-      .from(communities)
-      .where(eq(communities.id, post.communityId))
-      .limit(1),
+    db.select().from(communities).where(eq(communities.id, post.communityId)).limit(1),
     db.select().from(users).where(eq(users.id, post.authorId)).limit(1),
   ]);
 
@@ -132,9 +115,7 @@ const enrichPost = async (post: Post, userId?: number) => {
           memberCount: community[0].memberCount,
           createdAt: community[0].createdAt,
           updatedAt: community[0].updatedAt,
-          isJoined: userId
-            ? await communityQueries.isMember(userId, community[0].id)
-            : false,
+          isJoined: userId ? await communityQueries.isMember(userId, community[0].id) : false,
         }
       : null,
     author: author[0]
@@ -163,21 +144,13 @@ const enrichComment = async (
     };
   }
 
-  const author = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, comment.authorId))
-    .limit(1);
+  const author = await db.select().from(users).where(eq(users.id, comment.authorId)).limit(1);
 
   const enrichedReplies =
     comment.replies && comment.replies.length > 0
       ? await Promise.all(
           comment.replies.map((reply: Comment) =>
-            enrichComment(
-              reply as Comment & { replies?: Comment[] },
-              userId,
-              depth + 1
-            )
+            enrichComment(reply as Comment & { replies?: Comment[] }, userId, depth + 1)
           )
         )
       : [];
@@ -204,11 +177,7 @@ const enrichReport = async (report: Report) => {
       ? db.select().from(posts).where(eq(posts.id, report.postId)).limit(1)
       : Promise.resolve([]),
     report.commentId
-      ? db
-          .select()
-          .from(comments)
-          .where(eq(comments.id, report.commentId))
-          .limit(1)
+      ? db.select().from(comments).where(eq(comments.id, report.commentId)).limit(1)
       : Promise.resolve([]),
     report.resolvedBy
       ? db.select().from(users).where(eq(users.id, report.resolvedBy)).limit(1)
@@ -243,10 +212,9 @@ const enrichReport = async (report: Report) => {
 export const resolvers = {
   DateTime: {
     parseValue: (value: string) => new Date(value),
-    serialize: (value: Date | string) =>
-      value instanceof Date ? value.toISOString() : value,
+    serialize: (value: Date | string) => (value instanceof Date ? value.toISOString() : value),
     parseLiteral: (ast: { kind: string; value: string }) => {
-      if (ast.kind === 'StringValue') {
+      if (ast.kind === "StringValue") {
         return new Date(ast.value);
       }
       return null;
@@ -274,15 +242,11 @@ export const resolvers = {
       try {
         const userId = getUserId(context);
         if (communityId) {
-          const posts = await postQueries.getByCommunity(
-            parseInt(communityId),
-            limit,
-            offset
-          );
+          const posts = await postQueries.getByCommunity(parseInt(communityId), limit, offset);
           return Promise.all(posts.map((post) => enrichPost(post, userId)));
         } else {
           const posts = await postQueries.getFeed(
-            (sort as 'best' | 'hot' | 'new' | 'rising' | 'top') || 'best',
+            (sort as "best" | "hot" | "new" | "rising" | "top") || "best",
             limit,
             offset,
             userId
@@ -290,9 +254,9 @@ export const resolvers = {
           return Promise.all(posts.map((post) => enrichPost(post, userId)));
         }
       } catch (error) {
-        console.error('Query.posts error:', error);
-        throw new GraphQLError('Failed to fetch posts', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        console.error("Query.posts error:", error);
+        throw new GraphQLError("Failed to fetch posts", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
@@ -300,43 +264,34 @@ export const resolvers = {
     users: async (
       _: unknown,
       { limit = 20, offset = 0 }: { limit?: number; offset?: number }
-    ): Promise<Omit<User, 'passwordHash'>[]> => {
+    ): Promise<Omit<User, "passwordHash">[]> => {
       try {
-        const allUsers = await db
-          .select()
-          .from(users)
-          .limit(limit)
-          .offset(offset);
+        const allUsers = await db.select().from(users).limit(limit).offset(offset);
         return allUsers.map(({ passwordHash: _passwordHash, ...user }) => user);
       } catch (error) {
-        console.error('Error fetching users:', error);
-        throw new GraphQLError('Failed to fetch users', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        console.error("Error fetching users:", error);
+        throw new GraphQLError("Failed to fetch users", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
 
     searchUsers: async (
       _: unknown,
-      {
-        query,
-        limit = 20,
-        offset = 0,
-      }: { query: string; limit?: number; offset?: number }
-    ): Promise<Omit<User, 'passwordHash'>[]> => {
+      { query, limit = 20, offset = 0 }: { query: string; limit?: number; offset?: number }
+    ): Promise<Omit<User, "passwordHash">[]> => {
       try {
         if (query.length < 2) {
-          throw new GraphQLError(
-            'Search query must be at least 2 characters long',
-            { extensions: { code: 'INVALID_QUERY' } }
-          );
+          throw new GraphQLError("Search query must be at least 2 characters long", {
+            extensions: { code: "INVALID_QUERY" },
+          });
         }
         return await AuthQueries.searchUsers(query, limit, offset);
       } catch (error) {
-        console.error('Error searching users:', error);
+        console.error("Error searching users:", error);
         if (error instanceof GraphQLError) throw error;
-        throw new GraphQLError('Failed to search users', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        throw new GraphQLError("Failed to search users", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
@@ -344,7 +299,7 @@ export const resolvers = {
     user: async (
       _: unknown,
       { id }: { id: string }
-    ): Promise<Omit<User, 'passwordHash'> | null> => {
+    ): Promise<Omit<User, "passwordHash"> | null> => {
       try {
         const result = await db
           .select()
@@ -355,9 +310,9 @@ export const resolvers = {
         const { passwordHash: _passwordHash, ...safeUser } = result[0];
         return safeUser;
       } catch (error) {
-        console.error('Error fetching user:', error);
-        throw new GraphQLError('Failed to fetch user', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        console.error("Error fetching user:", error);
+        throw new GraphQLError("Failed to fetch user", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
@@ -369,9 +324,9 @@ export const resolvers = {
       try {
         return await communityQueries.getAll(limit, offset);
       } catch (error) {
-        console.error('Error fetching communities:', error);
-        throw new GraphQLError('Failed to fetch communities', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        console.error("Error fetching communities:", error);
+        throw new GraphQLError("Failed to fetch communities", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
@@ -381,9 +336,9 @@ export const resolvers = {
         if (!id) return null;
         return await communityQueries.getById(parseInt(id));
       } catch (error) {
-        console.error('Error fetching community:', error);
-        throw new GraphQLError('Failed to fetch community', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        console.error("Error fetching community:", error);
+        throw new GraphQLError("Failed to fetch community", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
@@ -392,102 +347,83 @@ export const resolvers = {
       try {
         return await communityQueries.getByName(name);
       } catch (error) {
-        console.error('Error fetching community by name:', error);
-        throw new GraphQLError('Failed to fetch community', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        console.error("Error fetching community by name:", error);
+        throw new GraphQLError("Failed to fetch community", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
 
-    popularCommunities: async (
-      _: unknown,
-      { limit = 10 }: { limit?: number }
-    ) => {
+    popularCommunities: async (_: unknown, { limit = 10 }: { limit?: number }) => {
       try {
         return await communityQueries.getPopular(limit);
       } catch (error) {
-        console.error('Error fetching popular communities:', error);
-        throw new GraphQLError('Failed to fetch popular communities', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        console.error("Error fetching popular communities:", error);
+        throw new GraphQLError("Failed to fetch popular communities", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
 
     searchCommunities: async (
       _: unknown,
-      {
-        query,
-        limit = 20,
-        offset = 0,
-      }: { query: string; limit?: number; offset?: number }
+      { query, limit = 20, offset = 0 }: { query: string; limit?: number; offset?: number }
     ) => {
       try {
         return await communityQueries.search(query, limit, offset);
       } catch (error) {
-        console.error('Error searching communities:', error);
-        throw new GraphQLError('Failed to search communities', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        console.error("Error searching communities:", error);
+        throw new GraphQLError("Failed to search communities", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
 
-    post: async (
-      _: unknown,
-      { id }: { id: string },
-      context: GraphQLContext
-    ) => {
+    post: async (_: unknown, { id }: { id: string }, context: GraphQLContext) => {
       try {
         const userId = getUserId(context);
         const post = await postQueries.getById(parseInt(id));
         if (!post) return null;
         return enrichPost(post, userId);
       } catch (error) {
-        console.error('Error fetching post:', error);
-        throw new GraphQLError('Failed to fetch post', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        console.error("Error fetching post:", error);
+        throw new GraphQLError("Failed to fetch post", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
 
     feed: async (
       _: unknown,
-      {
-        sort = 'best',
-        limit = 20,
-        offset = 0,
-      }: { sort?: string; limit?: number; offset?: number },
+      { sort = "best", limit = 20, offset = 0 }: { sort?: string; limit?: number; offset?: number },
       context: GraphQLContext
     ) => {
       try {
         const userId = getUserId(context);
         const posts = await postQueries.getFeed(
-          sort as 'best' | 'hot' | 'new' | 'rising' | 'top',
+          sort as "best" | "hot" | "new" | "rising" | "top",
           limit,
           offset,
           userId
         );
         return Promise.all(posts.map((post) => enrichPost(post, userId)));
       } catch (error) {
-        console.error('Error fetching feed:', error);
-        throw new GraphQLError('Failed to fetch feed', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        console.error("Error fetching feed:", error);
+        throw new GraphQLError("Failed to fetch feed", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
 
-    topStories: async (
-      _: unknown,
-      { limit = 6 }: { limit?: number },
-      context: GraphQLContext
-    ) => {
+    topStories: async (_: unknown, { limit = 6 }: { limit?: number }, context: GraphQLContext) => {
       try {
         const userId = getUserId(context);
         const posts = await postQueries.getTopStories(limit);
         return Promise.all(posts.map((post) => enrichPost(post, userId)));
       } catch (error) {
-        console.error('Error fetching top stories:', error);
-        throw new GraphQLError('Failed to fetch top stories', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        console.error("Error fetching top stories:", error);
+        throw new GraphQLError("Failed to fetch top stories", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
@@ -503,75 +439,50 @@ export const resolvers = {
     ) => {
       try {
         const userId = getUserId(context);
-        const posts = await postQueries.getByCommunity(
-          parseInt(communityId),
-          limit,
-          offset
-        );
+        const posts = await postQueries.getByCommunity(parseInt(communityId), limit, offset);
         return Promise.all(posts.map((post) => enrichPost(post, userId)));
       } catch (error) {
-        console.error('Error fetching posts by community:', error);
-        throw new GraphQLError('Failed to fetch posts by community', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        console.error("Error fetching posts by community:", error);
+        throw new GraphQLError("Failed to fetch posts by community", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
 
     userPosts: async (
       _: unknown,
-      {
-        userId,
-        limit = 20,
-        offset = 0,
-      }: { userId: string; limit?: number; offset?: number },
+      { userId, limit = 20, offset = 0 }: { userId: string; limit?: number; offset?: number },
       context: GraphQLContext
     ) => {
       try {
         const currentUserId = getUserId(context);
-        const posts = await postQueries.getByAuthor(
-          parseInt(userId),
-          limit,
-          offset
-        );
-        return Promise.all(
-          posts.map((post) => enrichPost(post, currentUserId))
-        );
+        const posts = await postQueries.getByAuthor(parseInt(userId), limit, offset);
+        return Promise.all(posts.map((post) => enrichPost(post, currentUserId)));
       } catch (error) {
-        console.error('Error fetching user posts:', error);
-        throw new GraphQLError('Failed to fetch user posts', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        console.error("Error fetching user posts:", error);
+        throw new GraphQLError("Failed to fetch user posts", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
 
     userComments: async (
       _: unknown,
-      {
-        userId,
-        limit = 20,
-        offset = 0,
-      }: { userId: string; limit?: number; offset?: number },
+      { userId, limit = 20, offset = 0 }: { userId: string; limit?: number; offset?: number },
       context: GraphQLContext
     ) => {
       try {
         const currentUserId = getUserId(context);
-        const userComments = await commentQueries.getByAuthor(
-          parseInt(userId),
-          limit,
-          offset
-        );
+        const userComments = await commentQueries.getByAuthor(parseInt(userId), limit, offset);
         return Promise.all(
           userComments.map((comment) =>
-            enrichComment(
-              comment as Comment & { replies?: Comment[] },
-              currentUserId
-            )
+            enrichComment(comment as Comment & { replies?: Comment[] }, currentUserId)
           )
         );
       } catch (error) {
-        console.error('Error fetching user comments:', error);
-        throw new GraphQLError('Failed to fetch user comments', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        console.error("Error fetching user comments:", error);
+        throw new GraphQLError("Failed to fetch user comments", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
@@ -601,20 +512,16 @@ export const resolvers = {
         );
         return Promise.all(posts.map((post) => enrichPost(post, userId)));
       } catch (error) {
-        console.error('Error searching posts:', error);
-        throw new GraphQLError('Failed to search posts', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        console.error("Error searching posts:", error);
+        throw new GraphQLError("Failed to search posts", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
 
     comments: async (
       _: unknown,
-      {
-        postId,
-        limit = 50,
-        offset = 0,
-      }: { postId: string; limit?: number; offset?: number },
+      { postId, limit = 50, offset = 0 }: { postId: string; limit?: number; offset?: number },
       context: GraphQLContext
     ) => {
       try {
@@ -631,30 +538,23 @@ export const resolvers = {
           )
         );
       } catch (error) {
-        console.error('Error fetching comments:', error);
-        throw new GraphQLError('Failed to fetch comments', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        console.error("Error fetching comments:", error);
+        throw new GraphQLError("Failed to fetch comments", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
 
-    comment: async (
-      _: unknown,
-      { id }: { id: string },
-      context: GraphQLContext
-    ) => {
+    comment: async (_: unknown, { id }: { id: string }, context: GraphQLContext) => {
       try {
         const userId = getUserId(context);
         const comment = await commentQueries.getById(parseInt(id));
         if (!comment) return null;
-        return enrichComment(
-          comment as Comment & { replies?: Comment[] },
-          userId
-        );
+        return enrichComment(comment as Comment & { replies?: Comment[] }, userId);
       } catch (error) {
-        console.error('Error fetching comment:', error);
-        throw new GraphQLError('Failed to fetch comment', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        console.error("Error fetching comment:", error);
+        throw new GraphQLError("Failed to fetch comment", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
@@ -669,35 +569,28 @@ export const resolvers = {
         const posts = await postQueries.getSavedByUser(userId, limit, offset);
         return Promise.all(posts.map((post) => enrichPost(post, userId)));
       } catch (error) {
-        console.error('Error fetching saved posts:', error);
+        console.error("Error fetching saved posts:", error);
         if (error instanceof GraphQLError) throw error;
-        throw new GraphQLError('Failed to fetch saved posts', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        throw new GraphQLError("Failed to fetch saved posts", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
 
-    flairsByCommunity: async (
-      _: unknown,
-      { communityId }: { communityId: string }
-    ) => {
+    flairsByCommunity: async (_: unknown, { communityId }: { communityId: string }) => {
       try {
         return await flairQueries.getByCommunity(parseInt(communityId));
       } catch (error) {
-        console.error('Error fetching flairs by community:', error);
-        throw new GraphQLError('Failed to fetch flairs', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        console.error("Error fetching flairs by community:", error);
+        throw new GraphQLError("Failed to fetch flairs", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
 
     reports: async (
       _: unknown,
-      {
-        status,
-        limit = 20,
-        offset = 0,
-      }: { status?: string; limit?: number; offset?: number },
+      { status, limit = 20, offset = 0 }: { status?: string; limit?: number; offset?: number },
       context: GraphQLContext
     ) => {
       try {
@@ -706,9 +599,7 @@ export const resolvers = {
 
         const allowedReports: Report[] = [];
         for (const report of allReports) {
-          const canView =
-            report.reporterId === userId ||
-            (await canModerateReport(userId, report));
+          const canView = report.reporterId === userId || (await canModerateReport(userId, report));
           if (canView) {
             allowedReports.push(report);
           }
@@ -716,19 +607,15 @@ export const resolvers = {
 
         return Promise.all(allowedReports.map(enrichReport));
       } catch (error) {
-        console.error('Error fetching reports:', error);
+        console.error("Error fetching reports:", error);
         if (error instanceof GraphQLError) throw error;
-        throw new GraphQLError('Failed to fetch reports', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        throw new GraphQLError("Failed to fetch reports", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
 
-    report: async (
-      _: unknown,
-      { id }: { id: string },
-      context: GraphQLContext
-    ) => {
+    report: async (_: unknown, { id }: { id: string }, context: GraphQLContext) => {
       try {
         const userId = requireAuth(context);
         const report = await reportQueries.getById(parseInt(id));
@@ -737,10 +624,10 @@ export const resolvers = {
         await ensureCanViewReport(userId, report);
         return enrichReport(report);
       } catch (error) {
-        console.error('Error fetching report:', error);
+        console.error("Error fetching report:", error);
         if (error instanceof GraphQLError) throw error;
-        throw new GraphQLError('Failed to fetch report', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        throw new GraphQLError("Failed to fetch report", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
@@ -754,7 +641,7 @@ export const resolvers = {
       try {
         return await postQueries.getByAuthor(parent.id, limit, offset);
       } catch (error) {
-        console.error('Error fetching user posts:', error);
+        console.error("Error fetching user posts:", error);
         return [];
       }
     },
@@ -765,7 +652,7 @@ export const resolvers = {
       try {
         return await commentQueries.getByAuthor(parent.id, limit, offset);
       } catch (error) {
-        console.error('Error fetching user comments:', error);
+        console.error("Error fetching user comments:", error);
         return [];
       }
     },
@@ -779,7 +666,7 @@ export const resolvers = {
       try {
         return await communityQueries.getMembers(parent.id, limit, offset);
       } catch (error) {
-        console.error('Error fetching community members:', error);
+        console.error("Error fetching community members:", error);
         return [];
       }
     },
@@ -795,51 +682,39 @@ export const resolvers = {
           role: mod.role,
         }));
       } catch (error) {
-        console.error('Error fetching community moderators:', error);
+        console.error("Error fetching community moderators:", error);
         return [];
       }
     },
     creator: async (parent: Community) => {
       try {
         if (!parent.creatorId) return null;
-        const result = await db
-          .select()
-          .from(users)
-          .where(eq(users.id, parent.creatorId))
-          .limit(1);
+        const result = await db.select().from(users).where(eq(users.id, parent.creatorId)).limit(1);
         if (!result[0]) return null;
         const { passwordHash: _passwordHash, ...user } = result[0];
         return user;
       } catch (error) {
-        console.error('Error fetching community creator:', error);
+        console.error("Error fetching community creator:", error);
         return null;
       }
     },
-    isJoined: async (
-      parent: { id: number },
-      _: unknown,
-      context: GraphQLContext
-    ) => {
+    isJoined: async (parent: { id: number }, _: unknown, context: GraphQLContext) => {
       try {
         const userId = getUserId(context);
         if (!userId) return false;
         return await communityQueries.isMember(userId, parent.id);
       } catch (error) {
-        console.error('Error checking if user joined community:', error);
+        console.error("Error checking if user joined community:", error);
         return false;
       }
     },
-    isModerator: async (
-      parent: { id: number },
-      _: unknown,
-      context: GraphQLContext
-    ) => {
+    isModerator: async (parent: { id: number }, _: unknown, context: GraphQLContext) => {
       try {
         const userId = getUserId(context);
         if (!userId) return false;
         return await communityQueries.isModerator(userId, parent.id);
       } catch (error) {
-        console.error('Error checking if user is moderator:', error);
+        console.error("Error checking if user is moderator:", error);
         return false;
       }
     },
@@ -853,14 +728,9 @@ export const resolvers = {
     ) => {
       try {
         const userId = getUserId(context);
-        return await commentQueries.getByPostId(
-          parent.id,
-          userId,
-          limit,
-          offset
-        );
+        return await commentQueries.getByPostId(parent.id, userId, limit, offset);
       } catch (error) {
-        console.error('Error fetching post comments:', error);
+        console.error("Error fetching post comments:", error);
         return [];
       }
     },
@@ -877,7 +747,7 @@ export const resolvers = {
       try {
         return await postQueries.getById(parent.postId);
       } catch (error) {
-        console.error('Error fetching comment post:', error);
+        console.error("Error fetching comment post:", error);
         return null;
       }
     },
@@ -886,18 +756,15 @@ export const resolvers = {
   Mutation: {
     updateUser: async (
       _: unknown,
-      {
-        userId,
-        input,
-      }: { userId: string; input: { username?: string; email?: string } },
+      { userId, input }: { userId: string; input: { username?: string; email?: string } },
       context: GraphQLContext
     ) => {
       try {
         const currentUserId = requireAuth(context);
 
         if (currentUserId !== parseInt(userId)) {
-          throw new GraphQLError('Unauthorized', {
-            extensions: { code: 'FORBIDDEN' },
+          throw new GraphQLError("Unauthorized", {
+            extensions: { code: "FORBIDDEN" },
           });
         }
 
@@ -908,8 +775,8 @@ export const resolvers = {
             .where(eq(users.username, input.username))
             .limit(1);
           if (existingUser[0] && existingUser[0].id !== currentUserId) {
-            throw new GraphQLError('Username already exists', {
-              extensions: { code: 'USERNAME_EXISTS' },
+            throw new GraphQLError("Username already exists", {
+              extensions: { code: "USERNAME_EXISTS" },
             });
           }
         }
@@ -921,8 +788,8 @@ export const resolvers = {
             .where(eq(users.email, input.email))
             .limit(1);
           if (existingUser[0] && existingUser[0].id !== currentUserId) {
-            throw new GraphQLError('Email already exists', {
-              extensions: { code: 'EMAIL_EXISTS' },
+            throw new GraphQLError("Email already exists", {
+              extensions: { code: "EMAIL_EXISTS" },
             });
           }
         }
@@ -934,38 +801,32 @@ export const resolvers = {
           .returning();
 
         if (!result[0]) {
-          throw new GraphQLError('User not found', {
-            extensions: { code: 'USER_NOT_FOUND' },
+          throw new GraphQLError("User not found", {
+            extensions: { code: "USER_NOT_FOUND" },
           });
         }
 
         const { passwordHash: _, ...safeUser } = result[0];
         return {
           ...safeUser,
-          createdAt: safeUser.createdAt
-            ? new Date(safeUser.createdAt).toISOString()
-            : undefined,
+          createdAt: safeUser.createdAt ? new Date(safeUser.createdAt).toISOString() : undefined,
         };
       } catch (error) {
-        console.error('Update user error:', error);
+        console.error("Update user error:", error);
         if (error instanceof GraphQLError) throw error;
-        throw new GraphQLError('Internal server error', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        throw new GraphQLError("Internal server error", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
 
-    deleteUser: async (
-      _: unknown,
-      { userId }: { userId: string },
-      context: GraphQLContext
-    ) => {
+    deleteUser: async (_: unknown, { userId }: { userId: string }, context: GraphQLContext) => {
       try {
         const currentUserId = requireAuth(context);
 
         if (currentUserId !== parseInt(userId)) {
-          throw new GraphQLError('Unauthorized', {
-            extensions: { code: 'FORBIDDEN' },
+          throw new GraphQLError("Unauthorized", {
+            extensions: { code: "FORBIDDEN" },
           });
         }
 
@@ -976,18 +837,18 @@ export const resolvers = {
           .limit(1);
 
         if (!existingUser[0]) {
-          throw new GraphQLError('User not found', {
-            extensions: { code: 'USER_NOT_FOUND' },
+          throw new GraphQLError("User not found", {
+            extensions: { code: "USER_NOT_FOUND" },
           });
         }
 
         await db.delete(users).where(eq(users.id, currentUserId));
         return true;
       } catch (error) {
-        console.error('Delete user error:', error);
+        console.error("Delete user error:", error);
         if (error instanceof GraphQLError) throw error;
-        throw new GraphQLError('Internal server error', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        throw new GraphQLError("Internal server error", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
@@ -1002,10 +863,10 @@ export const resolvers = {
         await communityQueries.join(userId, parseInt(communityId));
         return await communityQueries.getById(parseInt(communityId));
       } catch (error) {
-        console.error('Error joining community:', error);
+        console.error("Error joining community:", error);
         if (error instanceof GraphQLError) throw error;
-        throw new GraphQLError('Failed to join community', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        throw new GraphQLError("Failed to join community", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
@@ -1019,10 +880,10 @@ export const resolvers = {
         const userId = requireAuth(context);
         return await communityQueries.leave(userId, parseInt(communityId));
       } catch (error) {
-        console.error('Error leaving community:', error);
+        console.error("Error leaving community:", error);
         if (error instanceof GraphQLError) throw error;
-        throw new GraphQLError('Failed to leave community', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        throw new GraphQLError("Failed to leave community", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
@@ -1052,17 +913,17 @@ export const resolvers = {
         });
 
         // Add creator as owner/moderator
-        await communityQueries.addModerator(community.id, userId, 'owner');
+        await communityQueries.addModerator(community.id, userId, "owner");
 
         // Auto-join the creator to the community
         await communityQueries.join(userId, community.id);
 
         return await communityQueries.getById(community.id);
       } catch (error) {
-        console.error('Error creating community:', error);
+        console.error("Error creating community:", error);
         if (error instanceof GraphQLError) throw error;
-        throw new GraphQLError('Failed to create community', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        throw new GraphQLError("Failed to create community", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
@@ -1087,32 +948,26 @@ export const resolvers = {
         const userId = requireAuth(context);
 
         // Check if user is a moderator or owner
-        const isMod = await communityQueries.isModerator(
-          userId,
-          parseInt(communityId)
-        );
+        const isMod = await communityQueries.isModerator(userId, parseInt(communityId));
         if (!isMod) {
-          throw new GraphQLError('Only moderators can update community', {
-            extensions: { code: 'FORBIDDEN' },
+          throw new GraphQLError("Only moderators can update community", {
+            extensions: { code: "FORBIDDEN" },
           });
         }
 
-        const updatedCommunity = await communityQueries.update(
-          parseInt(communityId),
-          input
-        );
+        const updatedCommunity = await communityQueries.update(parseInt(communityId), input);
         if (!updatedCommunity) {
-          throw new GraphQLError('Community not found', {
-            extensions: { code: 'COMMUNITY_NOT_FOUND' },
+          throw new GraphQLError("Community not found", {
+            extensions: { code: "COMMUNITY_NOT_FOUND" },
           });
         }
 
         return updatedCommunity;
       } catch (error) {
-        console.error('Error updating community:', error);
+        console.error("Error updating community:", error);
         if (error instanceof GraphQLError) throw error;
-        throw new GraphQLError('Failed to update community', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        throw new GraphQLError("Failed to update community", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
@@ -1126,96 +981,81 @@ export const resolvers = {
         const userId = requireAuth(context);
 
         // Only owner can delete community
-        const isOwner = await communityQueries.isOwner(
-          userId,
-          parseInt(communityId)
-        );
+        const isOwner = await communityQueries.isOwner(userId, parseInt(communityId));
         if (!isOwner) {
-          throw new GraphQLError('Only the owner can delete the community', {
-            extensions: { code: 'FORBIDDEN' },
+          throw new GraphQLError("Only the owner can delete the community", {
+            extensions: { code: "FORBIDDEN" },
           });
         }
 
         const community = await communityQueries.getById(parseInt(communityId));
         if (!community) {
-          throw new GraphQLError('Community not found', {
-            extensions: { code: 'COMMUNITY_NOT_FOUND' },
+          throw new GraphQLError("Community not found", {
+            extensions: { code: "COMMUNITY_NOT_FOUND" },
           });
         }
 
         return await communityQueries.delete(parseInt(communityId));
       } catch (error) {
-        console.error('Error deleting community:', error);
+        console.error("Error deleting community:", error);
         if (error instanceof GraphQLError) throw error;
-        throw new GraphQLError('Failed to delete community', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        throw new GraphQLError("Failed to delete community", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
 
     addModerator: async (
       _: unknown,
-      {
-        communityId,
-        userId: targetUserId,
-      }: { communityId: string; userId: string },
+      { communityId, userId: targetUserId }: { communityId: string; userId: string },
       context: GraphQLContext
     ) => {
       try {
         const userId = requireAuth(context);
 
         // Only owner can add moderators
-        const isOwner = await communityQueries.isOwner(
-          userId,
-          parseInt(communityId)
-        );
+        const isOwner = await communityQueries.isOwner(userId, parseInt(communityId));
         if (!isOwner) {
-          throw new GraphQLError('Only the owner can add moderators', {
-            extensions: { code: 'FORBIDDEN' },
+          throw new GraphQLError("Only the owner can add moderators", {
+            extensions: { code: "FORBIDDEN" },
           });
         }
 
         await communityQueries.addModerator(
           parseInt(communityId),
           parseInt(targetUserId),
-          'moderator'
+          "moderator"
         );
         return await communityQueries.getById(parseInt(communityId));
       } catch (error) {
-        console.error('Error adding moderator:', error);
+        console.error("Error adding moderator:", error);
         if (error instanceof GraphQLError) throw error;
-        throw new GraphQLError('Failed to add moderator', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        throw new GraphQLError("Failed to add moderator", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
 
     removeModerator: async (
       _: unknown,
-      {
-        communityId,
-        userId: targetUserId,
-      }: { communityId: string; userId: string },
+      { communityId, userId: targetUserId }: { communityId: string; userId: string },
       context: GraphQLContext
     ) => {
       try {
         const userId = requireAuth(context);
 
         // Only owner can remove moderators
-        const isOwner = await communityQueries.isOwner(
-          userId,
-          parseInt(communityId)
-        );
+        const isOwner = await communityQueries.isOwner(userId, parseInt(communityId));
         if (!isOwner) {
-          throw new GraphQLError('Only the owner can remove moderators', {
-            extensions: { code: 'FORBIDDEN' },
+          throw new GraphQLError("Only the owner can remove moderators", {
+            extensions: { code: "FORBIDDEN" },
           });
         }
 
         // Prevent owner from removing themselves
         if (userId === parseInt(targetUserId)) {
-          throw new GraphQLError('Owner cannot remove themselves', {
-            extensions: { code: 'FORBIDDEN' },
+          throw new GraphQLError("Owner cannot remove themselves", {
+            extensions: { code: "FORBIDDEN" },
           });
         }
 
@@ -1224,10 +1064,10 @@ export const resolvers = {
           parseInt(targetUserId)
         );
       } catch (error) {
-        console.error('Error removing moderator:', error);
+        console.error("Error removing moderator:", error);
         if (error instanceof GraphQLError) throw error;
-        throw new GraphQLError('Failed to remove moderator', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        throw new GraphQLError("Failed to remove moderator", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
@@ -1250,13 +1090,10 @@ export const resolvers = {
         const userId = requireAuth(context);
 
         // Check if user is a moderator
-        const isMod = await communityQueries.isModerator(
-          userId,
-          parseInt(input.communityId)
-        );
+        const isMod = await communityQueries.isModerator(userId, parseInt(input.communityId));
         if (!isMod) {
-          throw new GraphQLError('Only moderators can create flairs', {
-            extensions: { code: 'FORBIDDEN' },
+          throw new GraphQLError("Only moderators can create flairs", {
+            extensions: { code: "FORBIDDEN" },
           });
         }
 
@@ -1269,10 +1106,10 @@ export const resolvers = {
 
         return flair;
       } catch (error) {
-        console.error('Error creating flair:', error);
+        console.error("Error creating flair:", error);
         if (error instanceof GraphQLError) throw error;
-        throw new GraphQLError('Failed to create flair', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        throw new GraphQLError("Failed to create flair", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
@@ -1294,19 +1131,16 @@ export const resolvers = {
         // Get flair to check community
         const flair = await flairQueries.getById(parseInt(flairId));
         if (!flair) {
-          throw new GraphQLError('Flair not found', {
-            extensions: { code: 'FLAIR_NOT_FOUND' },
+          throw new GraphQLError("Flair not found", {
+            extensions: { code: "FLAIR_NOT_FOUND" },
           });
         }
 
         // Check if user is a moderator of the community
-        const isMod = await communityQueries.isModerator(
-          userId,
-          flair.communityId
-        );
+        const isMod = await communityQueries.isModerator(userId, flair.communityId);
         if (!isMod) {
-          throw new GraphQLError('Only moderators can update flairs', {
-            extensions: { code: 'FORBIDDEN' },
+          throw new GraphQLError("Only moderators can update flairs", {
+            extensions: { code: "FORBIDDEN" },
           });
         }
 
@@ -1318,47 +1152,40 @@ export const resolvers = {
 
         return updatedFlair;
       } catch (error) {
-        console.error('Error updating flair:', error);
+        console.error("Error updating flair:", error);
         if (error instanceof GraphQLError) throw error;
-        throw new GraphQLError('Failed to update flair', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        throw new GraphQLError("Failed to update flair", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
 
-    deleteFlair: async (
-      _: unknown,
-      { flairId }: { flairId: string },
-      context: GraphQLContext
-    ) => {
+    deleteFlair: async (_: unknown, { flairId }: { flairId: string }, context: GraphQLContext) => {
       try {
         const userId = requireAuth(context);
 
         // Get flair to check community
         const flair = await flairQueries.getById(parseInt(flairId));
         if (!flair) {
-          throw new GraphQLError('Flair not found', {
-            extensions: { code: 'FLAIR_NOT_FOUND' },
+          throw new GraphQLError("Flair not found", {
+            extensions: { code: "FLAIR_NOT_FOUND" },
           });
         }
 
         // Check if user is a moderator of the community
-        const isMod = await communityQueries.isModerator(
-          userId,
-          flair.communityId
-        );
+        const isMod = await communityQueries.isModerator(userId, flair.communityId);
         if (!isMod) {
-          throw new GraphQLError('Only moderators can delete flairs', {
-            extensions: { code: 'FORBIDDEN' },
+          throw new GraphQLError("Only moderators can delete flairs", {
+            extensions: { code: "FORBIDDEN" },
           });
         }
 
         return await flairQueries.delete(parseInt(flairId));
       } catch (error) {
-        console.error('Error deleting flair:', error);
+        console.error("Error deleting flair:", error);
         if (error instanceof GraphQLError) throw error;
-        throw new GraphQLError('Failed to delete flair', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        throw new GraphQLError("Failed to delete flair", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
@@ -1381,14 +1208,10 @@ export const resolvers = {
         const userId = requireAuth(context);
 
         // Validate that either postId or commentId is provided, but not both
-        if (
-          (!input.postId && !input.commentId) ||
-          (input.postId && input.commentId)
-        ) {
-          throw new GraphQLError(
-            'Must provide either postId or commentId, but not both',
-            { extensions: { code: 'INVALID_INPUT' } }
-          );
+        if ((!input.postId && !input.commentId) || (input.postId && input.commentId)) {
+          throw new GraphQLError("Must provide either postId or commentId, but not both", {
+            extensions: { code: "INVALID_INPUT" },
+          });
         }
 
         // Check if user can report this content
@@ -1399,8 +1222,8 @@ export const resolvers = {
         );
 
         if (!canReport) {
-          throw new GraphQLError('You have already reported this content', {
-            extensions: { code: 'ALREADY_REPORTED' },
+          throw new GraphQLError("You have already reported this content", {
+            extensions: { code: "ALREADY_REPORTED" },
           });
         }
 
@@ -1409,22 +1232,22 @@ export const resolvers = {
           postId: input.postId ? parseInt(input.postId) : null,
           commentId: input.commentId ? parseInt(input.commentId) : null,
           reason: input.reason as
-            | 'spam'
-            | 'harassment'
-            | 'hate_speech'
-            | 'violence'
-            | 'inappropriate_content'
-            | 'copyright_violation'
-            | 'other',
+            | "spam"
+            | "harassment"
+            | "hate_speech"
+            | "violence"
+            | "inappropriate_content"
+            | "copyright_violation"
+            | "other",
           description: input.description,
         });
 
         return enrichReport(report);
       } catch (error) {
-        console.error('Error creating report:', error);
+        console.error("Error creating report:", error);
         if (error instanceof GraphQLError) throw error;
-        throw new GraphQLError('Failed to create report', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        throw new GraphQLError("Failed to create report", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
@@ -1439,31 +1262,27 @@ export const resolvers = {
 
         const report = await reportQueries.getById(parseInt(reportId));
         if (!report) {
-          throw new GraphQLError('Report not found', {
-            extensions: { code: 'NOT_FOUND' },
+          throw new GraphQLError("Report not found", {
+            extensions: { code: "NOT_FOUND" },
           });
         }
 
         await ensureCanResolveReport(userId, report);
 
-        const updatedReport = await reportQueries.updateStatus(
-          parseInt(reportId),
-          status,
-          userId
-        );
+        const updatedReport = await reportQueries.updateStatus(parseInt(reportId), status, userId);
 
         if (!updatedReport) {
-          throw new GraphQLError('Failed to update report', {
-            extensions: { code: 'INTERNAL_ERROR' },
+          throw new GraphQLError("Failed to update report", {
+            extensions: { code: "INTERNAL_ERROR" },
           });
         }
 
         return enrichReport(updatedReport);
       } catch (error) {
-        console.error('Error resolving report:', error);
+        console.error("Error resolving report:", error);
         if (error instanceof GraphQLError) throw error;
-        throw new GraphQLError('Failed to resolve report', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        throw new GraphQLError("Failed to resolve report", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
@@ -1503,8 +1322,7 @@ export const resolvers = {
           authorId: userId,
           title,
           content,
-          type:
-            (type as 'text' | 'image' | 'video' | 'link' | 'poll') || 'text',
+          type: (type as "text" | "image" | "video" | "link" | "poll") || "text",
         });
 
         if (media && media.length > 0) {
@@ -1525,10 +1343,10 @@ export const resolvers = {
 
         return enrichedPost;
       } catch (error) {
-        console.error('Error creating post:', error);
+        console.error("Error creating post:", error);
         if (error instanceof GraphQLError) throw error;
-        throw new GraphQLError('Failed to create post', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        throw new GraphQLError("Failed to create post", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
@@ -1543,18 +1361,14 @@ export const resolvers = {
 
         const post = await postQueries.getById(parseInt(postId));
         if (!post) {
-          throw new GraphQLError('Post not found', {
-            extensions: { code: 'NOT_FOUND' },
+          throw new GraphQLError("Post not found", {
+            extensions: { code: "NOT_FOUND" },
           });
         }
 
         await requireCommunityMembership(userId, post.communityId);
 
-        await postQueries.vote(
-          parseInt(postId),
-          userId,
-          voteType as 'upvote' | 'downvote'
-        );
+        await postQueries.vote(parseInt(postId), userId, voteType as "upvote" | "downvote");
 
         const enrichedPost = await enrichPost(post, userId);
 
@@ -1563,26 +1377,22 @@ export const resolvers = {
 
         return enrichedPost;
       } catch (error) {
-        console.error('Error voting on post:', error);
+        console.error("Error voting on post:", error);
         if (error instanceof GraphQLError) throw error;
-        throw new GraphQLError('Failed to vote on post', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        throw new GraphQLError("Failed to vote on post", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
 
-    savePost: async (
-      _: unknown,
-      { postId }: { postId: string },
-      context: GraphQLContext
-    ) => {
+    savePost: async (_: unknown, { postId }: { postId: string }, context: GraphQLContext) => {
       try {
         const userId = requireAuth(context);
 
         const post = await postQueries.getById(parseInt(postId));
         if (!post) {
-          throw new GraphQLError('Post not found', {
-            extensions: { code: 'NOT_FOUND' },
+          throw new GraphQLError("Post not found", {
+            extensions: { code: "NOT_FOUND" },
           });
         }
 
@@ -1591,26 +1401,22 @@ export const resolvers = {
         await postQueries.save(userId, parseInt(postId));
         return true;
       } catch (error) {
-        console.error('Error saving post:', error);
+        console.error("Error saving post:", error);
         if (error instanceof GraphQLError) throw error;
-        throw new GraphQLError('Failed to save post', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        throw new GraphQLError("Failed to save post", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
 
-    unsavePost: async (
-      _: unknown,
-      { postId }: { postId: string },
-      context: GraphQLContext
-    ) => {
+    unsavePost: async (_: unknown, { postId }: { postId: string }, context: GraphQLContext) => {
       try {
         const userId = requireAuth(context);
 
         const post = await postQueries.getById(parseInt(postId));
         if (!post) {
-          throw new GraphQLError('Post not found', {
-            extensions: { code: 'NOT_FOUND' },
+          throw new GraphQLError("Post not found", {
+            extensions: { code: "NOT_FOUND" },
           });
         }
 
@@ -1619,10 +1425,10 @@ export const resolvers = {
         await postQueries.unsave(userId, parseInt(postId));
         return true;
       } catch (error) {
-        console.error('Error unsaving post:', error);
+        console.error("Error unsaving post:", error);
         if (error instanceof GraphQLError) throw error;
-        throw new GraphQLError('Failed to unsave post', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        throw new GraphQLError("Failed to unsave post", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
@@ -1644,14 +1450,14 @@ export const resolvers = {
         // Check if user is the author of the post
         const post = await postQueries.getById(parseInt(postId));
         if (!post) {
-          throw new GraphQLError('Post not found', {
-            extensions: { code: 'POST_NOT_FOUND' },
+          throw new GraphQLError("Post not found", {
+            extensions: { code: "POST_NOT_FOUND" },
           });
         }
 
         if (post.authorId !== userId) {
-          throw new GraphQLError('Only the author can update this post', {
-            extensions: { code: 'FORBIDDEN' },
+          throw new GraphQLError("Only the author can update this post", {
+            extensions: { code: "FORBIDDEN" },
           });
         }
 
@@ -1662,16 +1468,14 @@ export const resolvers = {
         });
 
         if (!updatedPost) {
-          throw new GraphQLError('Post not found', {
-            extensions: { code: 'POST_NOT_FOUND' },
+          throw new GraphQLError("Post not found", {
+            extensions: { code: "POST_NOT_FOUND" },
           });
         }
 
         // Update flairs if provided
         if (input.flairIds) {
-          await db
-            .delete(postFlairs)
-            .where(eq(postFlairs.postId, parseInt(postId)));
+          await db.delete(postFlairs).where(eq(postFlairs.postId, parseInt(postId)));
           if (input.flairIds.length > 0) {
             await postQueries.addFlairs(
               parseInt(postId),
@@ -1687,55 +1491,46 @@ export const resolvers = {
 
         return enrichedPost;
       } catch (error) {
-        console.error('Error updating post:', error);
+        console.error("Error updating post:", error);
         if (error instanceof GraphQLError) throw error;
-        throw new GraphQLError('Failed to update post', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        throw new GraphQLError("Failed to update post", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
 
-    deletePost: async (
-      _: unknown,
-      { postId }: { postId: string },
-      context: GraphQLContext
-    ) => {
+    deletePost: async (_: unknown, { postId }: { postId: string }, context: GraphQLContext) => {
       try {
         const userId = requireAuth(context);
 
         const post = await postQueries.getById(parseInt(postId));
         if (!post) {
-          throw new GraphQLError('Post not found', {
-            extensions: { code: 'POST_NOT_FOUND' },
+          throw new GraphQLError("Post not found", {
+            extensions: { code: "POST_NOT_FOUND" },
           });
         }
 
         // Check if user is the author or a moderator of the community
-        const isMod = await communityQueries.isModerator(
-          userId,
-          post.communityId
-        );
+        const isMod = await communityQueries.isModerator(userId, post.communityId);
         if (post.authorId !== userId && !isMod) {
-          throw new GraphQLError('Not authorized to delete this post', {
-            extensions: { code: 'FORBIDDEN' },
+          throw new GraphQLError("Not authorized to delete this post", {
+            extensions: { code: "FORBIDDEN" },
           });
         }
 
         return await postQueries.delete(parseInt(postId));
       } catch (error) {
-        console.error('Error deleting post:', error);
+        console.error("Error deleting post:", error);
         if (error instanceof GraphQLError) throw error;
-        throw new GraphQLError('Failed to delete post', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        throw new GraphQLError("Failed to delete post", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
 
     createComment: async (
       _: unknown,
-      {
-        input,
-      }: { input: { postId: string; content: string; parentId?: string } },
+      { input }: { input: { postId: string; content: string; parentId?: string } },
       context: GraphQLContext
     ) => {
       try {
@@ -1744,8 +1539,8 @@ export const resolvers = {
         const { postId, content, parentId } = input;
         const post = await postQueries.getById(parseInt(postId));
         if (!post) {
-          throw new GraphQLError('Post not found', {
-            extensions: { code: 'POST_NOT_FOUND' },
+          throw new GraphQLError("Post not found", {
+            extensions: { code: "POST_NOT_FOUND" },
           });
         }
 
@@ -1768,10 +1563,10 @@ export const resolvers = {
 
         return enrichedComment;
       } catch (error) {
-        console.error('Error creating comment:', error);
+        console.error("Error creating comment:", error);
         if (error instanceof GraphQLError) throw error;
-        throw new GraphQLError('Failed to create comment', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        throw new GraphQLError("Failed to create comment", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
@@ -1786,25 +1581,21 @@ export const resolvers = {
 
         const comment = await commentQueries.getById(parseInt(commentId));
         if (!comment) {
-          throw new GraphQLError('Comment not found', {
-            extensions: { code: 'NOT_FOUND' },
+          throw new GraphQLError("Comment not found", {
+            extensions: { code: "NOT_FOUND" },
           });
         }
 
         const post = await postQueries.getById(comment.postId);
         if (!post) {
-          throw new GraphQLError('Post not found', {
-            extensions: { code: 'NOT_FOUND' },
+          throw new GraphQLError("Post not found", {
+            extensions: { code: "NOT_FOUND" },
           });
         }
 
         await requireCommunityMembership(userId, post.communityId);
 
-        await commentQueries.vote(
-          parseInt(commentId),
-          userId,
-          voteType as 'upvote' | 'downvote'
-        );
+        await commentQueries.vote(parseInt(commentId), userId, voteType as "upvote" | "downvote");
 
         const enrichedComment = await enrichComment(
           comment as Comment & { replies?: Comment[] },
@@ -1815,10 +1606,10 @@ export const resolvers = {
 
         return enrichedComment;
       } catch (error) {
-        console.error('Error voting on comment:', error);
+        console.error("Error voting on comment:", error);
         if (error instanceof GraphQLError) throw error;
-        throw new GraphQLError('Failed to vote on comment', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        throw new GraphQLError("Failed to vote on comment", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
@@ -1832,40 +1623,32 @@ export const resolvers = {
         const userId = requireAuth(context);
 
         // Check if user is the author
-        const existingComment = await commentQueries.getById(
-          parseInt(commentId)
-        );
+        const existingComment = await commentQueries.getById(parseInt(commentId));
         if (!existingComment) {
-          throw new GraphQLError('Comment not found', {
-            extensions: { code: 'NOT_FOUND' },
+          throw new GraphQLError("Comment not found", {
+            extensions: { code: "NOT_FOUND" },
           });
         }
 
         if (existingComment.authorId !== userId) {
-          throw new GraphQLError('Only the author can update this comment', {
-            extensions: { code: 'FORBIDDEN' },
+          throw new GraphQLError("Only the author can update this comment", {
+            extensions: { code: "FORBIDDEN" },
           });
         }
 
-        const comment = await commentQueries.update(
-          parseInt(commentId),
-          content
-        );
+        const comment = await commentQueries.update(parseInt(commentId), content);
         if (!comment) {
-          throw new GraphQLError('Comment not found', {
-            extensions: { code: 'NOT_FOUND' },
+          throw new GraphQLError("Comment not found", {
+            extensions: { code: "NOT_FOUND" },
           });
         }
 
-        return await enrichComment(
-          comment as Comment & { replies?: Comment[] },
-          userId
-        );
+        return await enrichComment(comment as Comment & { replies?: Comment[] }, userId);
       } catch (error) {
-        console.error('Error updating comment:', error);
+        console.error("Error updating comment:", error);
         if (error instanceof GraphQLError) throw error;
-        throw new GraphQLError('Failed to update comment', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        throw new GraphQLError("Failed to update comment", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
@@ -1881,29 +1664,27 @@ export const resolvers = {
         // Check if user is the author
         const comment = await commentQueries.getById(parseInt(commentId));
         if (!comment) {
-          throw new GraphQLError('Comment not found', {
-            extensions: { code: 'NOT_FOUND' },
+          throw new GraphQLError("Comment not found", {
+            extensions: { code: "NOT_FOUND" },
           });
         }
 
         // Get the post to check if user is a moderator
         const post = await postQueries.getById(comment.postId);
-        const isMod = post
-          ? await communityQueries.isModerator(userId, post.communityId)
-          : false;
+        const isMod = post ? await communityQueries.isModerator(userId, post.communityId) : false;
 
         if (comment.authorId !== userId && !isMod) {
-          throw new GraphQLError('Not authorized to delete this comment', {
-            extensions: { code: 'FORBIDDEN' },
+          throw new GraphQLError("Not authorized to delete this comment", {
+            extensions: { code: "FORBIDDEN" },
           });
         }
 
         return await commentQueries.delete(parseInt(commentId));
       } catch (error) {
-        console.error('Error deleting comment:', error);
+        console.error("Error deleting comment:", error);
         if (error instanceof GraphQLError) throw error;
-        throw new GraphQLError('Failed to delete comment', {
-          extensions: { code: 'INTERNAL_ERROR' },
+        throw new GraphQLError("Failed to delete comment", {
+          extensions: { code: "INTERNAL_ERROR" },
         });
       }
     },
@@ -1919,9 +1700,7 @@ export const resolvers = {
         ) => {
           if (!payload) return false;
           if (!variables?.communityId) return true;
-          return (
-            payload.postAdded.community.id === parseInt(variables.communityId)
-          );
+          return payload.postAdded.community.id === parseInt(variables.communityId);
         }
       ),
     },

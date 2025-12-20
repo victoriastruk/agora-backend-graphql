@@ -1,12 +1,12 @@
-import { yoga } from '@elysiajs/graphql-yoga';
-import { schema } from '@/graphql/schema';
-import { pubsub } from '@/graphql/resolvers';
-import { AuthUtils } from '@/utils/auth';
+import { yoga } from "@elysiajs/graphql-yoga";
+import { schema } from "@/graphql/schema";
+import { pubsub } from "@/graphql/resolvers";
+import { AuthUtils } from "@/utils/auth";
 
 export const yogaPlugin = yoga({
   schema,
   graphiql: {
-    title: 'Reddit Backend GraphQL API',
+    title: "Reddit Backend GraphQL API",
     defaultQuery: `# Welcome to Reddit Backend GraphQL API
 # 
 # This playground provides access to all GraphQL queries, mutations, and subscriptions.
@@ -56,32 +56,27 @@ query GetFeed {
   context: async ({ request }) => {
     let userId: number | undefined = undefined;
 
-    const authHeader = request.headers.get('authorization');
+    const authHeader = request.headers.get("authorization");
     if (authHeader) {
-      const token = authHeader.replace('Bearer ', '');
+      const token = authHeader.replace("Bearer ", "");
       const accessVerification = await AuthUtils.verifyAccessToken(token);
-      if (accessVerification.status === 'valid' && accessVerification.payload) {
+      if (accessVerification.status === "valid" && accessVerification.payload) {
         userId = Number(accessVerification.payload.sub);
       }
     }
 
-    const cookieHeader = request.headers.get('cookie');
+    const cookieHeader = request.headers.get("cookie");
     if (!userId && cookieHeader) {
       const cookies = Object.fromEntries(
-        cookieHeader.split('; ').map((c) => {
-          const [key, value] = c.split('=');
+        cookieHeader.split("; ").map((c) => {
+          const [key, value] = c.split("=");
           return [key, value];
         })
       );
 
       if (cookies.accessToken) {
-        const accessVerification = await AuthUtils.verifyAccessToken(
-          cookies.accessToken
-        );
-        if (
-          accessVerification.status === 'valid' &&
-          accessVerification.payload
-        ) {
+        const accessVerification = await AuthUtils.verifyAccessToken(cookies.accessToken);
+        if (accessVerification.status === "valid" && accessVerification.payload) {
           userId = Number(accessVerification.payload.sub);
         }
       }

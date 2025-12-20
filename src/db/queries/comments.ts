@@ -1,12 +1,12 @@
-import { eq, desc, sql, and, isNull } from 'drizzle-orm';
-import { db } from '@/db/client';
-import { comments, votes, type Comment, type NewComment } from '@/db/schema';
-import { postQueries } from './posts';
+import { eq, desc, sql, and, isNull } from "drizzle-orm";
+import { db } from "@/db/client";
+import { comments, votes, type Comment, type NewComment } from "@/db/schema";
+import { postQueries } from "./posts";
 
 export type CommentWithRelations = Comment & {
   author?: { id: number; username: string };
   replies?: CommentWithRelations[];
-  userVote?: 'upvote' | 'downvote' | null;
+  userVote?: "upvote" | "downvote" | null;
 };
 
 export const commentQueries = {
@@ -54,7 +54,7 @@ export const commentQueries = {
             )
         : [];
 
-    const voteMap = new Map<number, 'upvote' | 'downvote'>();
+    const voteMap = new Map<number, "upvote" | "downvote">();
     userVotes.forEach((v) => {
       if (v.commentId) voteMap.set(v.commentId, v.type);
     });
@@ -82,11 +82,7 @@ export const commentQueries = {
   },
 
   async getById(id: number): Promise<Comment | null> {
-    const result = await db
-      .select()
-      .from(comments)
-      .where(eq(comments.id, id))
-      .limit(1);
+    const result = await db.select().from(comments).where(eq(comments.id, id)).limit(1);
     return result[0] || null;
   },
 
@@ -110,18 +106,11 @@ export const commentQueries = {
   },
 
   async delete(id: number): Promise<boolean> {
-    const result = await db
-      .delete(comments)
-      .where(eq(comments.id, id))
-      .returning();
+    const result = await db.delete(comments).where(eq(comments.id, id)).returning();
     return result.length > 0;
   },
 
-  async vote(
-    commentId: number,
-    userId: number,
-    voteType: 'upvote' | 'downvote'
-  ): Promise<void> {
+  async vote(commentId: number, userId: number, voteType: "upvote" | "downvote"): Promise<void> {
     const existingVote = await db
       .select()
       .from(votes)
@@ -131,17 +120,14 @@ export const commentQueries = {
     if (existingVote.length > 0) {
       if (existingVote[0].type === voteType) {
         await db.delete(votes).where(eq(votes.id, existingVote[0].id));
-        await this.updateScore(commentId, voteType === 'upvote' ? -1 : 1);
+        await this.updateScore(commentId, voteType === "upvote" ? -1 : 1);
       } else {
-        await db
-          .update(votes)
-          .set({ type: voteType })
-          .where(eq(votes.id, existingVote[0].id));
-        await this.updateScore(commentId, voteType === 'upvote' ? 2 : -2);
+        await db.update(votes).set({ type: voteType }).where(eq(votes.id, existingVote[0].id));
+        await this.updateScore(commentId, voteType === "upvote" ? 2 : -2);
       }
     } else {
       await db.insert(votes).values({ commentId, userId, type: voteType });
-      await this.updateScore(commentId, voteType === 'upvote' ? 1 : -1);
+      await this.updateScore(commentId, voteType === "upvote" ? 1 : -1);
     }
   },
 
@@ -152,11 +138,7 @@ export const commentQueries = {
       .where(eq(comments.id, commentId));
   },
 
-  async getByAuthor(
-    authorId: number,
-    limit = 20,
-    offset = 0
-  ): Promise<Comment[]> {
+  async getByAuthor(authorId: number, limit = 20, offset = 0): Promise<Comment[]> {
     return await db
       .select()
       .from(comments)

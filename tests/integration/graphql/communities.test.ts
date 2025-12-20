@@ -1,21 +1,14 @@
-import {
-  describe,
-  it,
-  expect,
-  beforeEach,
-  afterEach,
-  afterAll,
-} from 'bun:test';
-import { createTestApp, testUtils } from '../../utils/test-helpers';
+import { describe, it, expect, beforeEach, afterEach, afterAll } from "bun:test";
+import { createTestApp, testUtils } from "../../utils/test-helpers";
 import {
   setupTestDb,
   teardownTestDb,
   clearTestDb,
   createTestUser,
   createTestCommunity,
-} from '../../utils/test-db';
+} from "../../utils/test-db";
 
-describe('GraphQL Communities Integration Tests', () => {
+describe("GraphQL Communities Integration Tests", () => {
   let app: ReturnType<typeof createTestApp>;
   let graphql: ReturnType<typeof testUtils.graphql>;
 
@@ -34,8 +27,8 @@ describe('GraphQL Communities Integration Tests', () => {
     await teardownTestDb();
   });
 
-  describe('Query.communities', () => {
-    it('should return empty array when no communities exist', async () => {
+  describe("Query.communities", () => {
+    it("should return empty array when no communities exist", async () => {
       const response = await graphql.query(`
         query {
           communities(limit: 10, offset: 0) {
@@ -52,15 +45,15 @@ describe('GraphQL Communities Integration Tests', () => {
       expect(result.data.communities).toEqual([]);
     });
 
-    it('should return communities ordered by member count', async () => {
+    it("should return communities ordered by member count", async () => {
       await createTestCommunity({
-        name: 'community1',
-        displayName: 'Community 1',
+        name: "community1",
+        displayName: "Community 1",
         memberCount: 5,
       });
       await createTestCommunity({
-        name: 'community2',
-        displayName: 'Community 2',
+        name: "community2",
+        displayName: "Community 2",
         memberCount: 10,
       });
 
@@ -83,12 +76,12 @@ describe('GraphQL Communities Integration Tests', () => {
     });
   });
 
-  describe('Query.community', () => {
-    it('should return community by ID', async () => {
+  describe("Query.community", () => {
+    it("should return community by ID", async () => {
       const testCommunity = await createTestCommunity({
-        name: 'testcommunity',
-        displayName: 'Test Community',
-        description: 'A test community',
+        name: "testcommunity",
+        displayName: "Test Community",
+        description: "A test community",
         memberCount: 5,
       });
 
@@ -110,12 +103,12 @@ describe('GraphQL Communities Integration Tests', () => {
       const result = await testUtils.parseGraphQLResponse(response);
       expect(result.errors).toBeUndefined();
       expect(result.data.community).toBeDefined();
-      expect(result.data.community.name).toBe('testcommunity');
-      expect(result.data.community.displayName).toBe('Test Community');
-      expect(result.data.community.description).toBe('A test community');
+      expect(result.data.community.name).toBe("testcommunity");
+      expect(result.data.community.displayName).toBe("Test Community");
+      expect(result.data.community.description).toBe("A test community");
     });
 
-    it('should return null for non-existent community', async () => {
+    it("should return null for non-existent community", async () => {
       const response = await graphql.query(`
         query {
           community(id: "99999") {
@@ -131,11 +124,11 @@ describe('GraphQL Communities Integration Tests', () => {
     });
   });
 
-  describe('Query.communityByName', () => {
-    it('should return community by name', async () => {
+  describe("Query.communityByName", () => {
+    it("should return community by name", async () => {
       const testCommunity = await createTestCommunity({
-        name: 'programming',
-        displayName: 'Programming Community',
+        name: "programming",
+        displayName: "Programming Community",
       });
 
       const response = await graphql.query(
@@ -148,20 +141,18 @@ describe('GraphQL Communities Integration Tests', () => {
           }
         }
       `,
-        { name: 'programming' }
+        { name: "programming" }
       );
 
       const result = await testUtils.parseGraphQLResponse(response);
       expect(result.errors).toBeUndefined();
-      expect(result.data.communityByName.name).toBe('programming');
-      expect(result.data.communityByName.displayName).toBe(
-        'Programming Community'
-      );
+      expect(result.data.communityByName.name).toBe("programming");
+      expect(result.data.communityByName.displayName).toBe("Programming Community");
     });
   });
 
-  describe('Query.popularCommunities', () => {
-    it('should return top communities by member count', async () => {
+  describe("Query.popularCommunities", () => {
+    it("should return top communities by member count", async () => {
       // Create communities with different member counts
       for (let i = 1; i <= 15; i++) {
         await createTestCommunity({
@@ -189,7 +180,7 @@ describe('GraphQL Communities Integration Tests', () => {
       expect(result.data.popularCommunities[9].memberCount).toBe(6);
     });
 
-    it('should respect limit parameter', async () => {
+    it("should respect limit parameter", async () => {
       for (let i = 1; i <= 5; i++) {
         await createTestCommunity({
           name: `community${i}`,
@@ -213,28 +204,28 @@ describe('GraphQL Communities Integration Tests', () => {
     });
   });
 
-  describe('Community.members', () => {
-    it('should return community members', async () => {
+  describe("Community.members", () => {
+    it("should return community members", async () => {
       const testCommunity = await createTestCommunity({
-        name: 'testcommunity',
-        displayName: 'Test Community',
+        name: "testcommunity",
+        displayName: "Test Community",
       });
 
       // Create test users and add them as members
       const user1 = await createTestUser({
-        username: 'member1',
-        email: 'member1@example.com',
-        passwordHash: 'hash1',
+        username: "member1",
+        email: "member1@example.com",
+        passwordHash: "hash1",
       });
       const user2 = await createTestUser({
-        username: 'member2',
-        email: 'member2@example.com',
-        passwordHash: 'hash2',
+        username: "member2",
+        email: "member2@example.com",
+        passwordHash: "hash2",
       });
 
       // Add users to community (this would normally be done through joinCommunity mutation)
-      const { db } = await import('@/db/client');
-      const { communityMembers } = await import('@/db/schema');
+      const { db } = await import("@/db/client");
+      const { communityMembers } = await import("@/db/schema");
       await db.insert(communityMembers).values([
         { userId: user1.id, communityId: testCommunity.id },
         { userId: user2.id, communityId: testCommunity.id },
@@ -263,23 +254,23 @@ describe('GraphQL Communities Integration Tests', () => {
     });
   });
 
-  describe('Mutation.createCommunity', () => {
+  describe("Mutation.createCommunity", () => {
     let authToken: string;
 
     beforeEach(async () => {
       const testUser = await createTestUser({
-        username: 'testuser',
-        email: 'test@example.com',
-        passwordHash: 'hash',
+        username: "testuser",
+        email: "test@example.com",
+        passwordHash: "hash",
       });
 
       // Create JWT token for auth
-      const { AuthUtils } = await import('@/utils/auth');
+      const { AuthUtils } = await import("@/utils/auth");
       const session = await AuthUtils.createAuthSession(testUser);
       authToken = session.tokens.accessToken;
     });
 
-    it('should create a new community', async () => {
+    it("should create a new community", async () => {
       const response = await graphql.mutation(
         `
         mutation CreateCommunity($input: CreateCommunityInput!) {
@@ -294,9 +285,9 @@ describe('GraphQL Communities Integration Tests', () => {
       `,
         {
           input: {
-            name: 'newcommunity',
-            displayName: 'New Community',
-            description: 'A brand new community',
+            name: "newcommunity",
+            displayName: "New Community",
+            description: "A brand new community",
           },
         },
         authToken
@@ -305,15 +296,13 @@ describe('GraphQL Communities Integration Tests', () => {
       const result = await testUtils.parseGraphQLResponse(response);
       expect(result.errors).toBeUndefined();
       expect(result.data.createCommunity).toBeDefined();
-      expect(result.data.createCommunity.name).toBe('newcommunity');
-      expect(result.data.createCommunity.displayName).toBe('New Community');
-      expect(result.data.createCommunity.description).toBe(
-        'A brand new community'
-      );
+      expect(result.data.createCommunity.name).toBe("newcommunity");
+      expect(result.data.createCommunity.displayName).toBe("New Community");
+      expect(result.data.createCommunity.description).toBe("A brand new community");
       expect(result.data.createCommunity.memberCount).toBe(0);
     });
 
-    it('should require authentication', async () => {
+    it("should require authentication", async () => {
       const response = await graphql.mutation(`
         mutation {
           createCommunity(input: {
@@ -327,34 +316,34 @@ describe('GraphQL Communities Integration Tests', () => {
 
       const result = await testUtils.parseGraphQLResponse(response);
       expect(result.errors).toBeDefined();
-      expect(result.errors[0].message).toContain('Not authenticated');
+      expect(result.errors[0].message).toContain("Not authenticated");
     });
   });
 
-  describe('Mutation.joinCommunity', () => {
+  describe("Mutation.joinCommunity", () => {
     let testUser: any;
     let testCommunity: any;
     let authToken: string;
 
     beforeEach(async () => {
       testUser = await createTestUser({
-        username: 'testuser',
-        email: 'test@example.com',
-        passwordHash: 'hash',
+        username: "testuser",
+        email: "test@example.com",
+        passwordHash: "hash",
       });
       testCommunity = await createTestCommunity({
-        name: 'testcommunity',
-        displayName: 'Test Community',
+        name: "testcommunity",
+        displayName: "Test Community",
         memberCount: 0,
       });
 
       // Create JWT token for auth
-      const { AuthUtils } = await import('@/utils/auth');
+      const { AuthUtils } = await import("@/utils/auth");
       const session = await AuthUtils.createAuthSession(testUser);
       authToken = session.tokens.accessToken;
     });
 
-    it('should join community successfully', async () => {
+    it("should join community successfully", async () => {
       const response = await graphql.mutation(
         `
         mutation JoinCommunity($communityId: ID!) {
@@ -377,7 +366,7 @@ describe('GraphQL Communities Integration Tests', () => {
       expect(result.data.joinCommunity.isJoined).toBe(true);
     });
 
-    it('should require authentication', async () => {
+    it("should require authentication", async () => {
       const response = await graphql.mutation(`
         mutation {
           joinCommunity(communityId: "${testCommunity.id}") {
@@ -388,10 +377,10 @@ describe('GraphQL Communities Integration Tests', () => {
 
       const result = await testUtils.parseGraphQLResponse(response);
       expect(result.errors).toBeDefined();
-      expect(result.errors[0].message).toContain('Not authenticated');
+      expect(result.errors[0].message).toContain("Not authenticated");
     });
 
-    it('should handle joining already joined community', async () => {
+    it("should handle joining already joined community", async () => {
       // Join once
       await graphql.mutation(
         `
@@ -425,38 +414,38 @@ describe('GraphQL Communities Integration Tests', () => {
     });
   });
 
-  describe('Mutation.leaveCommunity', () => {
+  describe("Mutation.leaveCommunity", () => {
     let testUser: any;
     let testCommunity: any;
     let authToken: string;
 
     beforeEach(async () => {
       testUser = await createTestUser({
-        username: 'testuser',
-        email: 'test@example.com',
-        passwordHash: 'hash',
+        username: "testuser",
+        email: "test@example.com",
+        passwordHash: "hash",
       });
       testCommunity = await createTestCommunity({
-        name: 'testcommunity',
-        displayName: 'Test Community',
+        name: "testcommunity",
+        displayName: "Test Community",
         memberCount: 1,
       });
 
       // Create JWT token for auth
-      const { AuthUtils } = await import('@/utils/auth');
+      const { AuthUtils } = await import("@/utils/auth");
       const session = await AuthUtils.createAuthSession(testUser);
       authToken = session.tokens.accessToken;
 
       // Add user to community
-      const { db } = await import('@/db/client');
-      const { communityMembers } = await import('@/db/schema');
+      const { db } = await import("@/db/client");
+      const { communityMembers } = await import("@/db/schema");
       await db.insert(communityMembers).values({
         userId: testUser.id,
         communityId: testCommunity.id,
       });
     });
 
-    it('should leave community successfully', async () => {
+    it("should leave community successfully", async () => {
       const response = await graphql.mutation(
         `
         mutation LeaveCommunity($communityId: ID!) {
@@ -472,7 +461,7 @@ describe('GraphQL Communities Integration Tests', () => {
       expect(result.data.leaveCommunity).toBe(true);
     });
 
-    it('should require authentication', async () => {
+    it("should require authentication", async () => {
       const response = await graphql.mutation(`
         mutation {
           leaveCommunity(communityId: "${testCommunity.id}")
@@ -481,7 +470,7 @@ describe('GraphQL Communities Integration Tests', () => {
 
       const result = await testUtils.parseGraphQLResponse(response);
       expect(result.errors).toBeDefined();
-      expect(result.errors[0].message).toContain('Not authenticated');
+      expect(result.errors[0].message).toContain("Not authenticated");
     });
   });
 });

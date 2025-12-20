@@ -1,17 +1,17 @@
-import { Elysia } from 'elysia';
-import { env } from '@/shared/config/env';
-import { closeDbConnection } from '@/db/client';
-import { closeRedisConnection } from '@/db/redis';
-import { corsPlugin } from '@/plugins/cors';
-import { yogaPlugin } from '@/plugins/yoga';
-import { errorPlugin } from '@/plugins/error';
-import { createRequestLogger } from '@/plugins/request-logger';
-import { authController } from '@/controllers/auth.controller';
-import { googleAuthController } from './controllers/googleAuth.controller';
-import { healthRoutes } from '@/routes/health';
-import { logger } from '@/utils/logger';
-import { AppConfig } from '@/types/app';
-import { openApiPlugin } from './plugins/openapi';
+import { Elysia } from "elysia";
+import { env } from "@/shared/config/env";
+import { closeDbConnection } from "@/db/client";
+import { closeRedisConnection } from "@/db/redis";
+import { corsPlugin } from "@/plugins/cors";
+import { yogaPlugin } from "@/plugins/yoga";
+import { errorPlugin } from "@/plugins/error";
+import { createRequestLogger } from "@/plugins/request-logger";
+import { authController } from "@/controllers/auth.controller";
+import { googleAuthController } from "./controllers/googleAuth.controller";
+import { healthRoutes } from "@/routes/health";
+import { logger } from "@/utils/logger";
+import { AppConfig } from "@/types/app";
+import { openApiPlugin } from "./plugins/openapi";
 
 class Application {
   private readonly config: AppConfig;
