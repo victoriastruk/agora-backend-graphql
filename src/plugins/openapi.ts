@@ -9,7 +9,7 @@ export const openApiPlugin = openapi({
   documentation: {
     openapi: "3.0.0",
     info: {
-      title: "Reddit Backend API - Authentication",
+      title: "Agora Backend API - Authentication",
       description:
         "REST API для автентифікації користувачів.\n\n⚠️ **Note**: Всі інші endpoints доступні через GraphQL API. Використовуйте GraphiQL Playground на `/graphql` для GraphQL API документації.",
       version: "1.0.0",

@@ -1,6 +1,6 @@
 # Test Suite Documentation
 
-This directory contains a comprehensive test suite for the Reddit Backend API, built using **Bun's built-in test runner** and following **Elysia's recommended testing patterns**.
+This directory contains a comprehensive test suite for the Agora Backend API, built using **Bun's built-in test runner** and following **Elysia's recommended testing patterns**.
 
 ## 📁 Directory Structure
 
@@ -228,10 +228,10 @@ You can connect to the PostgreSQL test database directly using any PostgreSQL cl
 
 ```bash
 # Using psql
-psql postgresql://postgres:pass@localhost:5432/reddit-server
+psql postgresql://postgres:pass@localhost:5432/agora-server
 
 # Or using Docker
-docker exec -it reddit-postgres psql -U postgres -d reddit-server
+docker exec -it agora-postgres psql -U postgres -d agora-server
 ```
 
 ## 🔍 Test Coverage
@@ -271,4 +271,4 @@ When adding new features:
 - Redis is mocked in unit tests but can use real Redis in integration tests
 - Test database connection is automatically set up and torn down
 - Test database URL can be configured via `TEST_DATABASE_URL` environment variable
-- Default test database uses the same connection as development: `postgresql://postgres:pass@localhost:5432/reddit-server`
+- Default test database uses the same connection as development: `postgresql://postgres:pass@localhost:5432/agora-server`

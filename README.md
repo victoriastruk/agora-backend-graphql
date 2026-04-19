@@ -1,6 +1,6 @@
-# Reddit Backend API
+# Agora Backend API
 
-A modern Reddit backend API built with Elysia.js, TypeScript, PostgreSQL, and Redis.
+Agora backend API built with Elysia.js, TypeScript, PostgreSQL, and Redis.
 
 ## 🚀 Quick Start
 
@@ -12,100 +12,68 @@ A modern Reddit backend API built with Elysia.js, TypeScript, PostgreSQL, and Re
 
 ### Full Development Environment
 
-Start everything with one command:
+Start full local environment:
 
 ```bash
-bun run dev:full
+bun run docker:up
+bun run db:migrate
+bun run dev
 ```
 
 This will:
 
 - ✅ Start PostgreSQL and Redis containers
-- ✅ Wait for services to be ready
 - ✅ Run database migrations
 - ✅ Start the development server
 
-### Manual Startup
-
-If you prefer to start services individually:
-
-1. **Start databases:**
-
-   ```bash
-   bun run docker:up
-   ```
-
-2. **Run migrations:**
-
-   ```bash
-   bun run db:migrate
-   ```
-
-3. **Start server:**
-   ```bash
-   bun run dev
-   ```
 
 ## 🛑 Stopping Services
 
-Stop all services:
+Stop Docker services:
 
 ```bash
-bun run stop
+bun run docker:down
 ```
 
 ## 📚 API Endpoints
 
 Once running, the API will be available at:
 
-- **Server:** http://localhost:5555
-- **API Docs:** http://localhost:5555/docs
-- **GraphQL Playground:** http://localhost:5555/graphql
-- **Health Check:** http://localhost:5555/health
+- **Server:** http://localhost:${PORT} (default 4000)
+- **API Docs:** http://localhost:${PORT}/docs
+- **GraphQL Playground:** http://localhost:${PORT}/graphql
+- **Health Check:** http://localhost:${PORT}/health
 
 ### GraphQL API
 
-**Основний API** - використовуйте GraphQL для всіх операцій (окрім автентифікації).
+**Primary API** - use GraphQL for all operations except authentication.
 
 - **Endpoint:** `POST /graphql`
-- **Playground:** `GET /graphql` (відкрийте в браузері)
-- **Документація:** [GRAPHQL_API.md](./GRAPHQL_API.md)
+- **Playground:** `GET /graphql` (open in browser)
 
-GraphQL API включає:
+GraphQL API includes:
 
-- ✅ Queries для читання даних
-- ✅ Mutations для зміни даних
-- ✅ Subscriptions для real-time оновлень
-- ✅ Повна підтримка Communities, Posts, Comments, Votes
+- ✅ Queries for reading data
+- ✅ Mutations for changing data
+- ✅ Subscriptions for real-time updates
+- ✅ Full support for Communities, Posts, Comments, Votes
 
 ### REST API (Authentication Only)
 
-⚠️ **Тільки auth endpoints залишились на REST**. Всі інші операції через GraphQL API.
+⚠️ **Only auth endpoints remain on REST**. All other operations are available via GraphQL API.
 
 Auth endpoints:
 
-- `POST /auth/register` - Реєстрація користувача
-- `POST /auth/login` - Вхід користувача
-- `POST /auth/logout` - Вихід користувача
-- `GET /auth/me` - Інформація про поточного користувача
-- `GET /api/auth/google` - Google OAuth ініціація
+- `POST /auth/register` - Register a user
+- `POST /auth/login` - Log in
+- `POST /auth/logout` - Log out
+- `GET /auth/me` - Get current user info
+- `GET /api/auth/google` - Start Google OAuth flow
 - `GET /api/auth/google/callback` - Google OAuth callback
 
 Health check:
 
-- `GET /health` - Перевірка стану сервера
-
-### 📚 Повна документація API
-
-**Детальна документація всіх endpoints**: [API_DOCUMENTATION.md](./API_DOCUMENTATION.md)
-
-Включає:
-
-- Повний опис всіх REST endpoints (deprecated)
-- Повний опис всіх GraphQL queries, mutations та subscriptions
-- Приклади запитів та відповідей
-- Опис параметрів та типів даних
-- Error handling та best practices
+- `GET /health` - Check server health
 
 ## 🗄️ Database
 
@@ -115,31 +83,34 @@ Health check:
 
 ## 🛠️ Available Scripts
 
-| Command               | Description                          |
-| --------------------- | ------------------------------------ |
-| `bun run dev`         | Start development server only        |
-| `bun run dev:full`    | Start all services (Docker + Server) |
-| `bun run stop`        | Stop all services                    |
-| `bun run db:migrate`  | Run database migrations              |
-| `bun run db:generate` | Generate new migrations              |
-| `bun run docker:up`   | Start Docker services                |
-| `bun run docker:down` | Stop Docker services                 |
-| `bun run lint`        | Run linter                           |
-| `bun run build`       | Build for production                 |
+| Command                  | Description                                      |
+| ------------------------ | ------------------------------------------------ |
+| `bun run dev`            | Start development server                         |
+| `bun run start:docker`   | Start local services via helper script           |
+| `bun run stop:docker`    | Stop local services via helper script            |
+| `bun run docker:up`      | Start Docker services (PostgreSQL + Redis)       |
+| `bun run docker:down`    | Stop Docker services                             |
+| `bun run docker:logs`    | Stream Docker logs                               |
+| `bun run db:migrate`     | Run database migrations                          |
+| `bun run db:generate`    | Generate new migrations                          |
+| `bun run db:push`        | Push schema changes directly to database         |
+| `bun run db:studio`      | Open Drizzle Studio                              |
+| `bun run db:seed`        | Seed database with initial data                  |
+| `bun run lint`           | Run linter                                       |
+| `bun run lint:aware`     | Run type-aware linting                           |
+| `bun run lint:fix`       | Auto-fix lint issues and format code             |
+| `bun run fmt`            | Format code                                      |
+| `bun run fmt:check`      | Check formatting without changing files          |
+| `bun run type-check`     | Run TypeScript type checking                     |
+| `bun run test`           | Run all tests                                    |
+| `bun run test:watch`     | Run tests in watch mode                          |
+| `bun run test:unit`      | Run unit tests                                   |
+| `bun run test:integration` | Run integration tests                          |
+| `bun run test:coverage`  | Run tests with coverage report                   |
+| `bun run build`          | Build for production                             |
+| `bun run start`          | Start production build                           |
 
 ## 🔧 Troubleshooting
-
-### PostgreSQL Connection Issues
-
-If you get "role 'postgres' does not exist" errors:
-
-```bash
-# Stop local PostgreSQL (if running)
-bun run postgres:stop
-
-# Or manually:
-brew services stop postgresql@18
-```
 
 ### Port Conflicts
 
@@ -158,7 +129,6 @@ src/
 ├── controllers/           # Route controllers
 ├── db/                    # Database configuration & schemas
 ├── graphql/               # GraphQL resolvers & schema
-├── middleware/            # Custom middleware
 ├── plugins/               # Elysia plugins
 ├── routes/                # API routes
 ├── shared/                # Shared utilities & config
@@ -175,7 +145,7 @@ drizzle/                   # Database migrations
 
 - **Linting:** `bun run lint`
 - **Type Checking:** `bun run type-check`
-- **Formatting:** `bun run format`
+- **Formatting:** `bun run fmt`
 
 ### Database Management
 

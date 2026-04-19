@@ -1,5 +1,5 @@
 {
-  "name": "reddit-client-back",
+  "name": "agora-client-back",
   "version": "1.0.50",
   "scripts": {
     "dev": "bun run --watch src/app.ts",

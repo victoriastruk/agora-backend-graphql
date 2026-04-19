@@ -6,9 +6,9 @@ import { AuthUtils } from "@/utils/auth";
 export const yogaPlugin = yoga({
   schema,
   graphiql: {
-    title: "Reddit Backend GraphQL API",
-    defaultQuery: `# Welcome to Reddit Backend GraphQL API
-# 
+    title: "Agora Backend GraphQL API",
+    defaultQuery: `# Welcome to Agora Backend GraphQL API
+#
 # This playground provides access to all GraphQL queries, mutations, and subscriptions.
 # 
 # Authentication: Include your JWT token in the headers:

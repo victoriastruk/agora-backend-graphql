@@ -8,7 +8,7 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-POSTGRES_CONTAINER=${POSTGRES_CONTAINER:-reddit-postgres}
+POSTGRES_CONTAINER=${POSTGRES_CONTAINER:-agora-postgres}
 REDIS_CONTAINER=${REDIS_CONTAINER:-hub-redis}
 DEFAULT_PORT=5555
 MAX_POSTGRES_ATTEMPTS=30
@@ -76,7 +76,7 @@ wait_for_postgres() {
   section "⏳ Waiting for PostgreSQL to be ready..."
 
   for ((attempt=1; attempt<=MAX_POSTGRES_ATTEMPTS; attempt++)); do
-    if docker exec "$POSTGRES_CONTAINER" pg_isready -U postgres -d reddit-server >/dev/null 2>&1; then
+    if docker exec "$POSTGRES_CONTAINER" pg_isready -U postgres -d agora-server >/dev/null 2>&1; then
       echo -e "${GREEN}✅ PostgreSQL is ready!${NC}"
       return
     fi
@@ -144,7 +144,7 @@ start_server() {
 }
 
 main() {
-  echo "🚀 Starting Reddit Backend API Server..."
+  echo "🚀 Starting Agora Backend API Server..."
   start_time=$(date +%s)
 
   check_docker

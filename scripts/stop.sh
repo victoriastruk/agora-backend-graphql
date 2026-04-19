@@ -15,7 +15,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No color
 
 DEFAULT_PORT=5555
-POSTGRES_CONTAINER=${POSTGRES_CONTAINER:-reddit-postgres}
+POSTGRES_CONTAINER=${POSTGRES_CONTAINER:-agora-postgres}
 REDIS_CONTAINER=${REDIS_CONTAINER:-hub-redis}
 NO_DOCKER=false
 
@@ -88,7 +88,7 @@ stop_specific_containers() {
 }
 
 main() {
-  echo "🛑 Stopping Reddit Backend API Server..."
+  echo "🛑 Stopping Agora Backend API Server..."
   echo ""
 
   local port

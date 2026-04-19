@@ -1,18 +1,18 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: reddit-postgres
+    container_name: agora-postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: pass
-      POSTGRES_DB: reddit-server
+      POSTGRES_DB: agora-server
     ports:
       - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres -d reddit-server']
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d agora-server']
       interval: 10s
       timeout: 5s
       retries: 5

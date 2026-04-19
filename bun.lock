@@ -2,7 +2,7 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "name": "reddit-client-back",
+      "name": "agora-client-back",
       "dependencies": {
         "@elysiajs/cors": "^1.4.0",
         "@elysiajs/graphql-yoga": "^1.4.0",

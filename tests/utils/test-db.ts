@@ -13,7 +13,7 @@ const getTestDatabaseUrl = (): string => {
     return process.env.TEST_DATABASE_URL;
   }
 
-  return "postgresql://postgres:pass@localhost:5432/reddit-server";
+  return "postgresql://postgres:pass@localhost:5432/agora-server";
 };
 
 export const setupTestDb = async (): Promise<PostgresJsDatabase<typeof schema>> => {

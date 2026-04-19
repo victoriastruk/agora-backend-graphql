@@ -1,5 +1,5 @@
 export const API_VERSION = "1.0.0";
-export const API_MESSAGE = "Reddit Backend API";
+export const API_MESSAGE = "Agora Backend API";
 export const HEALTH_STATUS_OK = "ok";
 
 export const ROUTES = {

@@ -82,7 +82,7 @@ export const healthRoutes = new Elysia()
                   properties: {
                     message: {
                       type: "string",
-                      example: "Welcome to Reddit Backend API",
+                      example: "Welcome to Agora Backend API",
                     },
                     version: { type: "string", example: "1.0.0" },
                     docs: { type: "string", example: "/docs" },
