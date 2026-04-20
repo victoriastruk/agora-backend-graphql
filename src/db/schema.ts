@@ -253,6 +253,21 @@ export const commentsRelations = relations(comments, ({ one, many }) => ({
   reports: many(reports),
 }));
 
+export const votesRelations = relations(votes, ({ one }) => ({
+  user: one(users, {
+    fields: [votes.userId],
+    references: [users.id],
+  }),
+  post: one(posts, {
+    fields: [votes.postId],
+    references: [posts.id],
+  }),
+  comment: one(comments, {
+    fields: [votes.commentId],
+    references: [comments.id],
+  }),
+}));
+
 export const reportsRelations = relations(reports, ({ one }) => ({
   reporter: one(users, {
     fields: [reports.reporterId],
