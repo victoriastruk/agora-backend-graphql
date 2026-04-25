@@ -1,60 +1,45 @@
-import argon2 from "argon2";
-import { nanoid } from "nanoid";
-import { SignJWT, jwtVerify, errors, type JWTPayload, decodeJwt } from "jose";
-import { redis } from "@/db/redis";
-import { env } from "@/shared/config/env";
-
-export type CookieStore = Record<
-  string,
-  {
-    value?: string;
-    httpOnly?: boolean;
-    path?: string;
-    sameSite?: "lax" | "strict" | "none";
-    secure?: boolean;
-    maxAge?: number;
-    expires?: Date;
-  }
->;
-
-export type AccessTokenPayload = JWTPayload & {
-  sub: string;
-  username: string;
-  email: string;
-};
-
-export type RefreshTokenPayload = JWTPayload & {
-  sub: string;
-  jti: string;
-};
-
-export type AuthTokens = {
-  accessToken: string;
-  refreshToken: string;
-};
+import argon2 from 'argon2';
+import { nanoid } from 'nanoid';
+import type {
+  CookieStore,
+  AccessTokenPayload,
+  RefreshTokenPayload,
+  AuthTokens,
+} from '@/types/auth';
+import { SignJWT, jwtVerify, errors, decodeJwt } from 'jose';
+import { redis } from '@/db/redis';
+import { env } from '@/shared/config/env';
 
 type TokenVerificationResult<TPayload> =
-  | { status: "valid"; payload: TPayload }
-  | { status: "expired"; payload: TPayload | null }
-  | { status: "invalid"; payload: null };
+  | { status: 'valid'; payload: TPayload }
+  | { status: 'expired'; payload: TPayload | null }
+  | { status: 'invalid'; payload: null };
+
+const COOKIE_BASE = {
+  httpOnly: true,
+  path: '/',
+  sameSite: 'lax' as const,
+  secure: env.NODE_ENV === 'production',
+} as const;
+
+const REFRESH_PREFIX = 'refresh:';
 
 export class AuthUtils {
-  private static readonly ACCESS_SECRET = new TextEncoder().encode(env.JWT_ACCESS_SECRET);
-  private static readonly REFRESH_SECRET = new TextEncoder().encode(env.JWT_REFRESH_SECRET);
-  private static readonly REFRESH_PREFIX = "refresh:";
-  private static ensureCookieSlot(cookie: CookieStore, name: "accessToken" | "refreshToken") {
-    if (!cookie[name]) {
-      cookie[name] = {};
-    }
-
-    return cookie[name];
-  }
+  private static readonly ACCESS_SECRET = new TextEncoder().encode(
+    env.JWT_ACCESS_SECRET,
+  );
+  private static readonly REFRESH_SECRET = new TextEncoder().encode(
+    env.JWT_REFRESH_SECRET,
+  );
 
   static async hashPassword(password: string): Promise<string> {
     return argon2.hash(password);
   }
 
-  static async verifyPassword(hash: string, password: string): Promise<boolean> {
+  static async verifyPassword(
+    hash: string,
+    password: string,
+  ): Promise<boolean> {
     try {
       return await argon2.verify(hash, password);
     } catch {
@@ -62,21 +47,36 @@ export class AuthUtils {
     }
   }
 
-  private static getRefreshKey(refreshTokenId: string): string {
-    return `${this.REFRESH_PREFIX}${refreshTokenId}`;
+  private static getRefreshKey(jti: string): string {
+    return `${REFRESH_PREFIX}${jti}`;
   }
 
-  private static async persistRefreshToken(refreshTokenId: string, userId: number): Promise<void> {
+  private static async persistRefreshToken(
+    jti: string,
+    userId: number,
+  ): Promise<void> {
     await redis.setex(
-      this.getRefreshKey(refreshTokenId),
+      this.getRefreshKey(jti),
       env.REFRESH_TTL_SEC,
-      JSON.stringify({ userId })
+      JSON.stringify({ userId }),
     );
   }
 
-  private static async refreshTokenExists(refreshTokenId: string): Promise<boolean> {
-    const token = await redis.get(this.getRefreshKey(refreshTokenId));
+  static async isRefreshTokenActive(jti: string): Promise<boolean> {
+    const token = await redis.get(this.getRefreshKey(jti));
     return Boolean(token);
+  }
+
+  static async revokeRefreshToken(jti: string): Promise<void> {
+    await redis.del(this.getRefreshKey(jti));
+  }
+
+  static async revokeRefreshTokenByToken(refreshToken: string): Promise<void> {
+    if (!refreshToken) return;
+    const verification = await this.verifyRefreshToken(refreshToken);
+    if (verification.payload?.jti) {
+      await this.revokeRefreshToken(verification.payload.jti);
+    }
   }
 
   private static async signAccessToken(user: {
@@ -89,18 +89,18 @@ export class AuthUtils {
       username: user.username,
       email: user.email,
     })
-      .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+      .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
       .setIssuedAt()
       .setExpirationTime(`${env.ACCESS_TTL_SEC}s`)
       .sign(this.ACCESS_SECRET);
   }
 
-  private static async signRefreshToken(userId: number, refreshTokenId: string): Promise<string> {
-    return new SignJWT({
-      sub: String(userId),
-      jti: refreshTokenId,
-    })
-      .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+  private static async signRefreshToken(
+    userId: number,
+    jti: string,
+  ): Promise<string> {
+    return new SignJWT({ sub: String(userId), jti })
+      .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
       .setIssuedAt()
       .setExpirationTime(`${env.REFRESH_TTL_SEC}s`)
       .sign(this.REFRESH_SECRET);
@@ -108,13 +108,14 @@ export class AuthUtils {
 
   static async createAuthSession(
     user: { id: number; username: string; email: string },
-    options?: { previousRefreshTokenId?: string }
+    options?: { previousRefreshTokenId?: string },
   ): Promise<{ tokens: AuthTokens; refreshTokenId: string }> {
     if (options?.previousRefreshTokenId) {
       await this.revokeRefreshToken(options.previousRefreshTokenId);
     }
 
     const refreshTokenId = nanoid(32);
+
     const [accessToken, refreshToken] = await Promise.all([
       this.signAccessToken(user),
       this.signRefreshToken(user.id, refreshTokenId),
@@ -122,152 +123,71 @@ export class AuthUtils {
 
     await this.persistRefreshToken(refreshTokenId, user.id);
 
-    return {
-      tokens: {
-        accessToken,
-        refreshToken,
-      },
-      refreshTokenId,
-    };
-  }
-
-  static async revokeRefreshToken(refreshTokenId: string): Promise<void> {
-    await redis.del(this.getRefreshKey(refreshTokenId));
-  }
-
-  static async revokeRefreshTokenByToken(refreshToken: string): Promise<void> {
-    if (!refreshToken) return;
-
-    const verification = await this.verifyRefreshToken(refreshToken);
-
-    if (verification.status === "valid" && verification.payload) {
-      await this.revokeRefreshToken(verification.payload.jti);
-    } else if (verification.status === "expired" && verification.payload) {
-      await this.revokeRefreshToken(verification.payload.jti);
-    }
+    return { tokens: { accessToken, refreshToken }, refreshTokenId };
   }
 
   static async verifyAccessToken(
-    token: string | undefined
+    token: string | undefined,
   ): Promise<TokenVerificationResult<AccessTokenPayload>> {
-    if (!token) {
-      return { status: "invalid", payload: null };
-    }
+    if (!token) return { status: 'invalid', payload: null };
 
     try {
       const { payload } = await jwtVerify(token, this.ACCESS_SECRET);
-      return {
-        status: "valid",
-        payload: payload as AccessTokenPayload,
-      };
+      return { status: 'valid', payload: payload as AccessTokenPayload };
     } catch (error) {
       if (error instanceof errors.JWTExpired) {
         try {
           const payload = decodeJwt(token);
-          return {
-            status: "expired",
-            payload: payload as AccessTokenPayload,
-          };
+          return { status: 'expired', payload: payload as AccessTokenPayload };
         } catch {
-          return {
-            status: "invalid",
-            payload: null,
-          };
+          return { status: 'invalid', payload: null };
         }
       }
-
-      return { status: "invalid", payload: null };
+      return { status: 'invalid', payload: null };
     }
   }
 
   static async verifyRefreshToken(
-    token: string | undefined
+    token: string | undefined,
   ): Promise<TokenVerificationResult<RefreshTokenPayload>> {
-    if (!token) {
-      return { status: "invalid", payload: null };
-    }
+    if (!token) return { status: 'invalid', payload: null };
 
     try {
       const { payload } = await jwtVerify(token, this.REFRESH_SECRET);
       const refreshPayload = payload as RefreshTokenPayload;
 
-      if (!refreshPayload.jti) {
-        return { status: "invalid", payload: null };
-      }
+      if (!refreshPayload.jti) return { status: 'invalid', payload: null };
 
-      const exists = await this.refreshTokenExists(refreshPayload.jti);
-      if (!exists) {
-        return { status: "invalid", payload: null };
-      }
-
-      return { status: "valid", payload: refreshPayload };
+      return { status: 'valid', payload: refreshPayload };
     } catch (error) {
       if (error instanceof errors.JWTExpired) {
         try {
-          const payload = decodeJwt(token);
-          const refreshPayload = payload as RefreshTokenPayload;
-
-          if (refreshPayload?.jti) {
-            await this.revokeRefreshToken(refreshPayload.jti);
-          }
-
-          return {
-            status: "expired",
-            payload: refreshPayload,
-          };
+          const payload = decodeJwt(token) as RefreshTokenPayload;
+          if (payload?.jti) await this.revokeRefreshToken(payload.jti);
+          return { status: 'expired', payload };
         } catch {
-          return {
-            status: "invalid",
-            payload: null,
-          };
+          return { status: 'invalid', payload: null };
         }
       }
-
-      return { status: "invalid", payload: null };
+      return { status: 'invalid', payload: null };
     }
   }
 
   static applyAuthCookies(cookie: CookieStore, tokens: AuthTokens): void {
-    const accessCookie = this.ensureCookieSlot(cookie, "accessToken");
-    Object.assign(accessCookie, {
+    cookie.accessToken = {
+      ...COOKIE_BASE,
       value: tokens.accessToken,
-      httpOnly: true,
-      path: "/",
-      sameSite: "lax" as const,
-      secure: env.NODE_ENV === "production",
       maxAge: env.ACCESS_TTL_SEC,
-    });
-
-    const refreshCookie = this.ensureCookieSlot(cookie, "refreshToken");
-    Object.assign(refreshCookie, {
+    };
+    cookie.refreshToken = {
+      ...COOKIE_BASE,
       value: tokens.refreshToken,
-      httpOnly: true,
-      path: "/",
-      sameSite: "lax" as const,
-      secure: env.NODE_ENV === "production",
       maxAge: env.REFRESH_TTL_SEC,
-    });
+    };
   }
 
   static clearAuthCookies(cookie: CookieStore): void {
-    const accessCookie = this.ensureCookieSlot(cookie, "accessToken");
-    Object.assign(accessCookie, {
-      value: "",
-      httpOnly: true,
-      path: "/",
-      sameSite: "lax" as const,
-      secure: env.NODE_ENV === "production",
-      expires: new Date(0),
-    });
-
-    const refreshCookie = this.ensureCookieSlot(cookie, "refreshToken");
-    Object.assign(refreshCookie, {
-      value: "",
-      httpOnly: true,
-      path: "/",
-      sameSite: "lax" as const,
-      secure: env.NODE_ENV === "production",
-      expires: new Date(0),
-    });
+    cookie.accessToken = { ...COOKIE_BASE, value: '', expires: new Date(0) };
+    cookie.refreshToken = { ...COOKIE_BASE, value: '', expires: new Date(0) };
   }
 }

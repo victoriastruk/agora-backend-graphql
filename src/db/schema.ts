@@ -21,22 +21,21 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const sessions = pgTable("sessions", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  userId: serial("user_id")
-    .references(() => users.id)
-    .notNull(),
-  expiresAt: timestamp("expires_at").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+export const communityTypeEnum = pgEnum("community_type", [
+  "public",
+  "restricted",
+  "private",
+]);
 
 export const communities = pgTable("communities", {
   id: serial("id").primaryKey(),
-  name: varchar("name", { length: 255 }).notNull().unique(),
+  name: varchar("name", { length: 21 }).notNull().unique(),
   displayName: varchar("display_name", { length: 255 }).notNull(),
-  description: text("description"),
+  description: varchar("description", { length: 500 }),
   iconUrl: text("icon_url"),
   bannerUrl: text("banner_url"),
+  topic: varchar("topic", { length: 100 }).notNull(),
+  communityType: communityTypeEnum("community_type").notNull().default("public"),
   creatorId: integer("creator_id").references(() => users.id),
   memberCount: integer("member_count").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -205,6 +204,17 @@ export const communitiesRelations = relations(communities, ({ one, many }) => ({
   }),
 }));
 
+export const communityMembersRelations = relations(communityMembers, ({ one }) => ({
+  community: one(communities, {
+    fields: [communityMembers.communityId],
+    references: [communities.id],
+  }),
+  user: one(users, {
+    fields: [communityMembers.userId],
+    references: [users.id],
+  }),
+}));
+
 export const communityModeratorsRelations = relations(communityModerators, ({ one }) => ({
   community: one(communities, {
     fields: [communityModerators.communityId],
@@ -213,6 +223,13 @@ export const communityModeratorsRelations = relations(communityModerators, ({ on
   user: one(users, {
     fields: [communityModerators.userId],
     references: [users.id],
+  }),
+}));
+
+export const flairsRelations = relations(flairs, ({ one }) => ({
+  community: one(communities, {
+    fields: [flairs.communityId],
+    references: [communities.id],
   }),
 }));
 
@@ -289,8 +306,6 @@ export const reportsRelations = relations(reports, ({ one }) => ({
 
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
-export type Session = typeof sessions.$inferSelect;
-export type NewSession = typeof sessions.$inferInsert;
 export type Community = typeof communities.$inferSelect;
 export type NewCommunity = typeof communities.$inferInsert;
 export type Post = typeof posts.$inferSelect;

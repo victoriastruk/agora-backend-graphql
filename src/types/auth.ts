@@ -1,19 +1,30 @@
-import { z } from "zod";
+import type { JWTPayload } from 'jose';
 
-export const registerSchema = z.object({
-  username: z
-    .string()
-    .min(3)
-    .max(30)
-    .regex(/^[a-zA-Z0-9_]+$/),
-  email: z.string().email(),
-  password: z.string().min(6),
-});
+export type CookieStore = Record<
+  string,
+  {
+    value?: string;
+    httpOnly?: boolean;
+    path?: string;
+    sameSite?: 'lax' | 'strict' | 'none';
+    secure?: boolean;
+    maxAge?: number;
+    expires?: Date;
+  }
+>;
 
-export const loginSchema = z.object({
-  usernameOrEmail: z.string().min(3),
-  password: z.string().min(6),
-});
+export type AccessTokenPayload = JWTPayload & {
+  sub: string;
+  username: string;
+  email: string;
+};
 
-export type RegisterInput = z.infer<typeof registerSchema>;
-export type LoginInput = z.infer<typeof loginSchema>;
+export type RefreshTokenPayload = JWTPayload & {
+  sub: string;
+  jti: string;
+};
+
+export type AuthTokens = {
+  accessToken: string;
+  refreshToken: string;
+};

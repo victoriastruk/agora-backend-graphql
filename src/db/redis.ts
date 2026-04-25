@@ -1,21 +1,32 @@
-import Redis from "ioredis";
-import { env } from "@/shared/config/env";
+import Redis from 'ioredis';
+import { logger } from '@/utils/logger';
+import { env } from '@/shared/config/env';
 
-export const redis = new Redis(env.REDIS_URL);
+let redisInstance: Redis | null = null;
 
-redis.on("error", (err) => {
-  console.error("Redis connection error:", err);
-});
+const getRedis = (): Redis => {
+  if (!redisInstance) {
+    redisInstance = new Redis(env.REDIS_URL);
+    redisInstance.on('error', err =>
+      logger.error('Redis connection error', err),
+    );
+    redisInstance.on('connect', () => logger.info('Connected to Redis'));
+  }
+  return redisInstance;
+};
 
-redis.on("connect", () => {
-  console.log("Connected to Redis");
+export const redis = new Proxy({} as Redis, {
+  get(_target, prop) {
+    return getRedis()[prop as keyof Redis];
+  },
 });
 
 export const closeRedisConnection = async (): Promise<void> => {
   try {
     await redis.quit();
-    console.log("Redis connection closed gracefully");
+    logger.info('Redis connection closed gracefully');
   } catch (error) {
-    console.error("Error closing Redis connection:", error);
+    logger.error('Error closing Redis connection', error as Error);
+    process.exit(1);
   }
 };

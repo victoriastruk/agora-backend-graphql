@@ -3,7 +3,6 @@ import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { setDbInstance } from "@/db/client";
 
 let client: postgres.Sql | null = null;
 let db: PostgresJsDatabase<typeof schema> | null = null;
@@ -30,8 +29,6 @@ export const setupTestDb = async (): Promise<PostgresJsDatabase<typeof schema>> 
     await client`SELECT 1`;
 
     db = drizzle(client, { schema }) as PostgresJsDatabase<typeof schema>;
-
-    setDbInstance(db);
 
     await client`
       CREATE TABLE IF NOT EXISTS users (
@@ -84,7 +81,6 @@ export const clearTestDb = async (): Promise<void> => {
   if (!db || !client) return;
 
   try {
-    await db.delete(schema.sessions).catch(() => {});
     await db.delete(schema.communityMembers).catch(() => {});
     await db.delete(schema.communities).catch(() => {});
     await db.delete(schema.users).catch(() => {});
@@ -128,50 +124,6 @@ export const getAllTestUsers = async () => {
   if (!db) throw new Error("Test database not initialized");
 
   return db.select().from(schema.users);
-};
-
-export const createTestSession = async (sessionData: {
-  id: string;
-  userId: number;
-  expiresAt: Date;
-}) => {
-  if (!db) throw new Error("Test database not initialized");
-
-  const result = await db
-    .insert(schema.sessions)
-    .values({
-      id: sessionData.id,
-      userId: sessionData.userId,
-      expiresAt: sessionData.expiresAt,
-    })
-    .returning();
-
-  return result[0];
-};
-
-export const createTestCommunity = async (communityData: {
-  name: string;
-  displayName: string;
-  description?: string;
-  iconUrl?: string;
-  bannerUrl?: string;
-  memberCount?: number;
-}) => {
-  if (!db) throw new Error("Test database not initialized");
-
-  const result = await db
-    .insert(schema.communities)
-    .values({
-      name: communityData.name,
-      displayName: communityData.displayName,
-      description: communityData.description,
-      iconUrl: communityData.iconUrl,
-      bannerUrl: communityData.bannerUrl,
-      memberCount: communityData.memberCount,
-    })
-    .returning();
-
-  return result[0];
 };
 
 export { db };

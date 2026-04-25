@@ -1,5 +1,5 @@
-import { eq, desc, sql, and, like, or } from "drizzle-orm";
-import { db } from "@/db/client";
+import { eq, desc, sql, and, like, or } from 'drizzle-orm';
+import { db } from '@/db/client';
 import {
   communities,
   communityMembers,
@@ -10,11 +10,14 @@ import {
   type CommunityMember,
   type CommunityModerator,
   type User,
-} from "@/db/schema";
+} from '@/db/schema';
 
 export const communityQueries = {
   async getAll(limit?: number, offset?: number): Promise<Community[]> {
-    const baseQuery = db.select().from(communities).orderBy(desc(communities.memberCount));
+    const baseQuery = db
+      .select()
+      .from(communities)
+      .orderBy(desc(communities.memberCount));
 
     if (limit !== undefined && offset !== undefined) {
       return await baseQuery.limit(limit).offset(offset);
@@ -28,25 +31,43 @@ export const communityQueries = {
   },
 
   async getById(id: number): Promise<Community | null> {
-    const result = await db.select().from(communities).where(eq(communities.id, id)).limit(1);
+    const result = await db
+      .select()
+      .from(communities)
+      .where(eq(communities.id, id))
+      .limit(1);
     return result[0] || null;
   },
 
   async getByName(name: string): Promise<Community | null> {
-    const result = await db.select().from(communities).where(eq(communities.name, name)).limit(1);
+    const result = await db
+      .select()
+      .from(communities)
+      .where(eq(communities.name, name))
+      .limit(1);
     return result[0] || null;
   },
 
   async getPopular(limit = 10): Promise<Community[]> {
-    return await db.select().from(communities).orderBy(desc(communities.memberCount)).limit(limit);
+    return await db
+      .select()
+      .from(communities)
+      .orderBy(desc(communities.memberCount))
+      .limit(limit);
   },
 
-  async create(data: NewCommunity): Promise<Community> {
-    const result = await db.insert(communities).values(data).returning();
+  async create(data: NewCommunity, userId: number): Promise<Community> {
+    const result = await db
+      .insert(communities)
+      .values({ ...data, creatorId: userId })
+      .returning();
     return result[0];
   },
 
-  async update(id: number, data: Partial<Community>): Promise<Community | null> {
+  async update(
+    id: number,
+    data: Partial<Community>,
+  ): Promise<Community | null> {
     const result = await db
       .update(communities)
       .set({ ...data, updatedAt: new Date() })
@@ -60,7 +81,10 @@ export const communityQueries = {
       .select()
       .from(communityMembers)
       .where(
-        and(eq(communityMembers.userId, userId), eq(communityMembers.communityId, communityId))
+        and(
+          eq(communityMembers.userId, userId),
+          eq(communityMembers.communityId, communityId),
+        ),
       )
       .limit(1);
     return result.length > 0;
@@ -73,13 +97,19 @@ export const communityQueries = {
         .select()
         .from(communityMembers)
         .where(
-          and(eq(communityMembers.userId, userId), eq(communityMembers.communityId, communityId))
+          and(
+            eq(communityMembers.userId, userId),
+            eq(communityMembers.communityId, communityId),
+          ),
         )
         .limit(1);
       return result[0];
     }
 
-    const member = await db.insert(communityMembers).values({ userId, communityId }).returning();
+    const member = await db
+      .insert(communityMembers)
+      .values({ userId, communityId })
+      .returning();
 
     await db
       .update(communities)
@@ -96,7 +126,10 @@ export const communityQueries = {
     const result = await db
       .delete(communityMembers)
       .where(
-        and(eq(communityMembers.userId, userId), eq(communityMembers.communityId, communityId))
+        and(
+          eq(communityMembers.userId, userId),
+          eq(communityMembers.communityId, communityId),
+        ),
       )
       .returning();
 
@@ -125,8 +158,8 @@ export const communityQueries = {
   async getMembers(
     communityId: number,
     limit = 50,
-    offset = 0
-  ): Promise<Pick<User, "id" | "username" | "email" | "createdAt">[]> {
+    offset = 0,
+  ): Promise<Pick<User, 'id' | 'username' | 'email' | 'createdAt'>[]> {
     const result = await db
       .select({
         id: users.id,
@@ -150,7 +183,10 @@ export const communityQueries = {
       .select()
       .from(communities)
       .where(
-        or(like(communities.name, searchPattern), like(communities.displayName, searchPattern))
+        or(
+          like(communities.name, searchPattern),
+          like(communities.displayName, searchPattern),
+        ),
       )
       .orderBy(desc(communities.memberCount))
       .limit(limit)
@@ -164,8 +200,8 @@ export const communityQueries = {
       .where(
         and(
           eq(communityModerators.userId, userId),
-          eq(communityModerators.communityId, communityId)
-        )
+          eq(communityModerators.communityId, communityId),
+        ),
       )
       .limit(1);
     return result.length > 0;
@@ -179,8 +215,8 @@ export const communityQueries = {
         and(
           eq(communityModerators.userId, userId),
           eq(communityModerators.communityId, communityId),
-          eq(communityModerators.role, "owner")
-        )
+          eq(communityModerators.role, 'owner'),
+        ),
       )
       .limit(1);
     return result.length > 0;
@@ -188,16 +224,16 @@ export const communityQueries = {
 
   async getModeratorRole(
     userId: number,
-    communityId: number
-  ): Promise<"owner" | "moderator" | null> {
+    communityId: number,
+  ): Promise<'owner' | 'moderator' | null> {
     const result = await db
       .select({ role: communityModerators.role })
       .from(communityModerators)
       .where(
         and(
           eq(communityModerators.userId, userId),
-          eq(communityModerators.communityId, communityId)
-        )
+          eq(communityModerators.communityId, communityId),
+        ),
       )
       .limit(1);
     return result[0]?.role || null;
@@ -206,7 +242,7 @@ export const communityQueries = {
   async addModerator(
     communityId: number,
     userId: number,
-    role: "owner" | "moderator" = "moderator"
+    role: 'owner' | 'moderator' = 'moderator',
   ): Promise<CommunityModerator> {
     const existing = await db
       .select()
@@ -214,8 +250,8 @@ export const communityQueries = {
       .where(
         and(
           eq(communityModerators.userId, userId),
-          eq(communityModerators.communityId, communityId)
-        )
+          eq(communityModerators.communityId, communityId),
+        ),
       )
       .limit(1);
 
@@ -242,8 +278,8 @@ export const communityQueries = {
       .where(
         and(
           eq(communityModerators.userId, userId),
-          eq(communityModerators.communityId, communityId)
-        )
+          eq(communityModerators.communityId, communityId),
+        ),
       )
       .returning();
     return result.length > 0;
@@ -254,7 +290,7 @@ export const communityQueries = {
       id: number;
       username: string;
       email: string;
-      role: "owner" | "moderator";
+      role: 'owner' | 'moderator';
     }>
   > {
     const result = await db
@@ -272,7 +308,10 @@ export const communityQueries = {
   },
 
   async delete(id: number): Promise<boolean> {
-    const result = await db.delete(communities).where(eq(communities.id, id)).returning();
+    const result = await db
+      .delete(communities)
+      .where(eq(communities.id, id))
+      .returning();
     return result.length > 0;
   },
 };

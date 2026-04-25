@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, mock } from "bun:test";
 import { AuthUtils } from "@/utils/auth";
-import { redis } from "@/db/redis";
 
 const mockRedis = {
   setex: mock(async () => "OK"),

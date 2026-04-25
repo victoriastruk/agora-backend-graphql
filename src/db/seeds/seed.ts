@@ -1,4 +1,5 @@
 import { db } from "@/db/client";
+import { sql } from "drizzle-orm";
 import { users } from "@/db/schema";
 import { AuthUtils } from "@/utils/auth";
 
@@ -34,8 +35,8 @@ export async function seed() {
   try {
     console.log("🌱 Starting database seeding...");
 
-    console.log("🧹 Clearing existing users...");
-    await db.delete(users);
+    console.log("🧹 Clearing existing data...");
+    await db.execute(sql`TRUNCATE TABLE users CASCADE`);
 
     const usersWithHashedPasswords = await Promise.all(
       mockUsers.map(async (user) => ({
