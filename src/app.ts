@@ -1,8 +1,8 @@
 import { Elysia } from 'elysia';
+import { cors } from '@elysiajs/cors';
 import { env } from '@/shared/config/env';
 import { closeDbConnection } from '@/db/client';
 import { closeRedisConnection } from '@/db/redis';
-import { corsPlugin } from '@/plugins/cors';
 import { errorPlugin } from '@/plugins/error';
 import { yogaPlugin } from '@/plugins/yoga';
 import { authController } from '@/controllers/auth.controller';
@@ -11,7 +11,7 @@ import { createRequestLogger } from '@/plugins/request-logger';
 import { logger } from '@/utils/logger';
 
 export const app = new Elysia()
-  .use(corsPlugin)
+  .use(cors({ origin: env.CORS_ORIGIN }))
   .use(errorPlugin)
   .use(createRequestLogger({ logger }))
   .get('/health', () => ({
@@ -36,5 +36,5 @@ app.listen(env.PORT, () => {
   logger.logServerStart(env.PORT);
 });
 
-process.on("SIGINT", () => app.stop());
-process.on("SIGTERM", () => app.stop());
+process.on('SIGINT', () => app.stop());
+process.on('SIGTERM', () => app.stop());
