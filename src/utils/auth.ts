@@ -174,20 +174,27 @@ export class AuthUtils {
   }
 
   static applyAuthCookies(cookie: CookieStore, tokens: AuthTokens): void {
-    cookie.accessToken = {
-      ...COOKIE_BASE,
+    cookie.accessToken.set({
       value: tokens.accessToken,
+      httpOnly: true,
+      path: '/',
+      sameSite: 'lax',
+      secure: env.NODE_ENV === 'production',
       maxAge: env.ACCESS_TTL_SEC,
-    };
-    cookie.refreshToken = {
-      ...COOKIE_BASE,
+    });
+
+    cookie.refreshToken.set({
       value: tokens.refreshToken,
+      httpOnly: true,
+      path: '/',
+      sameSite: 'lax',
+      secure: env.NODE_ENV === 'production',
       maxAge: env.REFRESH_TTL_SEC,
-    };
+    });
   }
 
   static clearAuthCookies(cookie: CookieStore): void {
-    cookie.accessToken = { ...COOKIE_BASE, value: '', expires: new Date(0) };
-    cookie.refreshToken = { ...COOKIE_BASE, value: '', expires: new Date(0) };
+    cookie.accessToken.remove();
+    cookie.refreshToken.remove();
   }
 }

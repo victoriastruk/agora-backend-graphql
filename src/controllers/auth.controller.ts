@@ -91,7 +91,7 @@ export const authController = new Elysia({ prefix: "/auth" })
     if (accessVerification.status === "valid" && accessVerification.payload) {
       userId = Number(accessVerification.payload.sub);
     } else if (
-      accessVerification.status === "expired" &&
+      (accessVerification.status === "expired" || accessVerification.status === "invalid") &&
       typeof refreshToken === "string"
     ) {
       const refreshVerification = await AuthUtils.verifyRefreshToken(refreshToken);

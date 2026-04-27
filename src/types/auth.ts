@@ -1,17 +1,10 @@
+import type { Cookie } from 'elysia';
 import type { JWTPayload } from 'jose';
 
-export type CookieStore = Record<
-  string,
-  {
-    value?: string;
-    httpOnly?: boolean;
-    path?: string;
-    sameSite?: 'lax' | 'strict' | 'none';
-    secure?: boolean;
-    maxAge?: number;
-    expires?: Date;
-  }
->;
+export type CookieStore = {
+  accessToken: Cookie<string>;
+  refreshToken: Cookie<string>;
+};
 
 export type AccessTokenPayload = JWTPayload & {
   sub: string;
