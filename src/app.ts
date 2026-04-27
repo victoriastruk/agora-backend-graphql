@@ -11,7 +11,7 @@ import { createRequestLogger } from '@/plugins/request-logger';
 import { logger } from '@/utils/logger';
 
 export const app = new Elysia()
-  .use(cors({ origin: env.CORS_ORIGIN }))
+  .use(cors({ origin: env.CORS_ORIGIN, maxAge: 86400 }))
   .use(errorPlugin)
   .use(createRequestLogger({ logger }))
   .get('/health', () => ({
