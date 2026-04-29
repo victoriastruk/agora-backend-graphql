@@ -10,6 +10,7 @@ import { voteTypeDefs } from "./vote";
 import { flairTypeDefs } from "./flair";
 import { reportTypeDefs } from "./report";
 import { subscriptionTypeDefs } from "./subscription";
+import { notificationTypeDefs } from "./notification";
 
 const baseTypeDefs = `
   scalar DateTime
@@ -34,6 +35,7 @@ export const schema = makeExecutableSchema({
     flairTypeDefs,
     reportTypeDefs,
     subscriptionTypeDefs,
+    notificationTypeDefs,
   ]),
   resolvers,
 });

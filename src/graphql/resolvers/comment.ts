@@ -1,9 +1,14 @@
 import { GraphQLError } from "graphql";
+import { eq } from "drizzle-orm";
+import { db } from "@/db/client";
+import { users } from "@/db/schema";
 import { communityQueries } from "@/db/queries/communities";
 import { postQueries } from "@/db/queries/posts";
 import { commentQueries } from "@/db/queries/comments";
+import { notificationQueries } from "@/db/queries/notifications";
 import { pubsub, Events } from "../pubsub";
 import { requireAuth, getUserId, requireCommunityMembership, enrichComment } from "./helpers";
+import { enrichNotification } from "./notification";
 import type { GraphQLContext } from "../types";
 import type { Comment } from "@/db/schema";
 
@@ -83,6 +88,44 @@ export const commentResolvers = {
 
         // Publish subscription event
         pubsub.publish(Events.COMMENT_ADDED, { commentAdded: enrichedComment });
+
+        // Trigger notification for post author (comment) or parent comment author (reply)
+        if (parentId) {
+          const parentComment = await commentQueries.getById(parseInt(parentId));
+          if (parentComment && parentComment.authorId !== userId) {
+            const actor = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+            const actorName = actor[0]?.username ?? "Someone";
+            const notification = await notificationQueries.create({
+              userId: parentComment.authorId,
+              type: "reply",
+              actorId: userId,
+              postId: parseInt(postId),
+              commentId: comment.id,
+              message: `${actorName} replied to your comment`,
+              isRead: false,
+            });
+            const enriched = await enrichNotification(notification);
+            pubsub.publish(Events.NOTIFICATION_RECEIVED, {
+              notificationReceived: { ...enriched, userId: parentComment.authorId },
+            });
+          }
+        } else if (post.authorId !== userId) {
+          const actor = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+          const actorName = actor[0]?.username ?? "Someone";
+          const notification = await notificationQueries.create({
+            userId: post.authorId,
+            type: "comment",
+            actorId: userId,
+            postId: parseInt(postId),
+            commentId: comment.id,
+            message: `${actorName} commented on your post "${post.title}"`,
+            isRead: false,
+          });
+          const enriched = await enrichNotification(notification);
+          pubsub.publish(Events.NOTIFICATION_RECEIVED, {
+            notificationReceived: { ...enriched, userId: post.authorId },
+          });
+        }
 
         return enrichedComment;
       } catch (error) {

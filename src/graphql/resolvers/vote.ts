@@ -1,10 +1,17 @@
 import { GraphQLError } from "graphql";
+import { eq } from "drizzle-orm";
+import { db } from "@/db/client";
+import { users } from "@/db/schema";
 import { postQueries } from "@/db/queries/posts";
 import { commentQueries } from "@/db/queries/comments";
+import { notificationQueries } from "@/db/queries/notifications";
 import { pubsub, Events } from "../pubsub";
 import { requireAuth, requireCommunityMembership, enrichPost, enrichComment } from "./helpers";
+import { enrichNotification } from "./notification";
 import type { GraphQLContext } from "../types";
 import type { Comment } from "@/db/schema";
+
+const UPVOTE_MILESTONES = new Set([10, 50, 100, 500, 1000]);
 
 export const voteResolvers = {
   Mutation: {
@@ -31,6 +38,30 @@ export const voteResolvers = {
 
         // Publish subscription event
         pubsub.publish(Events.POST_VOTED, { postVoted: enrichedPost });
+
+        // Trigger upvote milestone notification
+        const updatedPost = await postQueries.getById(parseInt(postId));
+        if (
+          updatedPost &&
+          updatedPost.authorId !== userId &&
+          voteType === "upvote" &&
+          UPVOTE_MILESTONES.has(updatedPost.score)
+        ) {
+          const actor = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+          const actorName = actor[0]?.username ?? "Someone";
+          const notification = await notificationQueries.create({
+            userId: updatedPost.authorId,
+            type: "upvote",
+            actorId: userId,
+            postId: updatedPost.id,
+            message: `${actorName} upvoted your post "${updatedPost.title}" — it reached ${updatedPost.score} upvotes!`,
+            isRead: false,
+          });
+          const enriched = await enrichNotification(notification);
+          pubsub.publish(Events.NOTIFICATION_RECEIVED, {
+            notificationReceived: { ...enriched, userId: updatedPost.authorId },
+          });
+        }
 
         return enrichedPost;
       } catch (error) {

@@ -7,6 +7,7 @@ import { voteResolvers } from "./vote";
 import { flairResolvers } from "./flair";
 import { reportResolvers } from "./report";
 import { subscriptionResolvers } from "./subscription";
+import { notificationResolvers } from "./notification";
 
 export const resolvers = mergeResolvers([
   userResolvers,
@@ -17,4 +18,5 @@ export const resolvers = mergeResolvers([
   flairResolvers,
   reportResolvers,
   subscriptionResolvers,
+  notificationResolvers,
 ]);

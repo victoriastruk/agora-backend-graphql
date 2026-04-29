@@ -7,6 +7,7 @@ import {
   integer,
   pgEnum,
   varchar,
+  boolean,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
@@ -216,6 +217,29 @@ export const reports = pgTable('reports', {
   resolvedBy: integer('resolved_by').references(() => users.id),
 });
 
+export const notificationTypeEnum = pgEnum('notification_type', [
+  'comment',
+  'reply',
+  'upvote',
+  'mention',
+  'follow',
+  'award',
+]);
+
+export const notifications = pgTable('notifications', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id')
+    .references(() => users.id, { onDelete: 'cascade' })
+    .notNull(),
+  type: notificationTypeEnum('type').notNull(),
+  actorId: integer('actor_id').references(() => users.id, { onDelete: 'set null' }),
+  postId: integer('post_id').references(() => posts.id, { onDelete: 'cascade' }),
+  commentId: integer('comment_id').references(() => comments.id, { onDelete: 'cascade' }),
+  message: text('message').notNull(),
+  isRead: boolean('is_read').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 export const usersRelations = relations(users, ({ many }) => ({
   posts: many(posts),
   comments: many(comments),
@@ -223,6 +247,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   communityMemberships: many(communityMembers),
   savedPosts: many(savedPosts),
   reports: many(reports),
+  notifications: many(notifications, { relationName: 'notificationRecipient' }),
 }));
 
 export const userSocialLinksRelations = relations(
@@ -376,3 +401,26 @@ export type Report = typeof reports.$inferSelect;
 export type NewReport = typeof reports.$inferInsert;
 export type CommunityModerator = typeof communityModerators.$inferSelect;
 export type NewCommunityModerator = typeof communityModerators.$inferInsert;
+export type Notification = typeof notifications.$inferSelect;
+export type NewNotification = typeof notifications.$inferInsert;
+
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(users, {
+    fields: [notifications.userId],
+    references: [users.id],
+    relationName: 'notificationRecipient',
+  }),
+  actor: one(users, {
+    fields: [notifications.actorId],
+    references: [users.id],
+    relationName: 'notificationActor',
+  }),
+  post: one(posts, {
+    fields: [notifications.postId],
+    references: [posts.id],
+  }),
+  comment: one(comments, {
+    fields: [notifications.commentId],
+    references: [comments.id],
+  }),
+}));
