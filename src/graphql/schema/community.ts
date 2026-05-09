@@ -1,37 +1,18 @@
 export const communityTypeDefs = /* GraphQL */ `
-  """Represents a community (subreddit)"""
   type Community {
-    """Unique identifier for the community"""
     id: ID!
-    """URL-friendly name (e.g., 'programming')"""
     name: String!
-    """Display name (e.g., 'Programming')"""
     displayName: String!
-    """Community description"""
     description: String
-    """Community icon URL"""
     iconUrl: String
-    """Community banner URL"""
     bannerUrl: String
-    """Community topic / category"""
-    topic: String!
-    """Community visibility type"""
-    communityType: CommunityType!
-    """Community creator"""
     creator: User
-    """Number of members"""
     memberCount: Int!
-    """List of community members"""
     members(limit: Int = 50, offset: Int = 0): [User!]!
-    """List of community moderators"""
     moderators: [Moderator!]!
-    """Community creation timestamp"""
     createdAt: DateTime!
-    """Last update timestamp"""
     updatedAt: DateTime!
-    """Whether the authenticated user has joined this community"""
-    isJoined: Boolean
-    """Whether the authenticated user is a moderator of this community"""
+    isJoined: Boolean!
     isModerator: Boolean
   }
 
@@ -43,46 +24,24 @@ export const communityTypeDefs = /* GraphQL */ `
     role: ModeratorRole!
   }
 
-  """Community visibility type"""
-  enum CommunityType {
-    public
-    restricted
-    private
-  }
-
   """Moderator role within a community"""
   enum ModeratorRole {
     owner
     moderator
   }
 
-  """Input for creating a new community"""
   input CreateCommunityInput {
-    """URL-friendly name (e.g., 'programming')"""
     name: String!
-    """Display name (e.g., 'Programming')"""
     displayName: String!
-    """Community description"""
     description: String
-    """Community icon URL"""
     iconUrl: String
-    """Community banner URL"""
     bannerUrl: String
-    """Community topic / category"""
-    topic: String!
-    """Community visibility (default: public)"""
-    communityType: CommunityType
   }
 
-  """Input for updating a community"""
   input UpdateCommunityInput {
-    """New display name"""
     displayName: String
-    """New description"""
     description: String
-    """New icon URL"""
     iconUrl: String
-    """New banner URL"""
     bannerUrl: String
   }
 

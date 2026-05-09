@@ -43,11 +43,6 @@ export const userSocialLinks = pgTable('user_social_links', {
     .$onUpdate(() => new Date()),
 });
 
-export const communityTypeEnum = pgEnum('community_type', [
-  'public',
-  'restricted',
-  'private',
-]);
 
 export const communities = pgTable('communities', {
   id: serial('id').primaryKey(),
@@ -55,11 +50,7 @@ export const communities = pgTable('communities', {
   displayName: varchar('display_name', { length: 255 }).notNull(),
   description: varchar('description', { length: 500 }),
   iconUrl: text('icon_url'),
-  bannerUrl: text('banner_url'),
-  topic: varchar('topic', { length: 100 }).notNull(),
-  communityType: communityTypeEnum('community_type')
-    .notNull()
-    .default('public'),
+  bannerUrl: text('banner_url'), 
   creatorId: integer('creator_id').references(() => users.id),
   memberCount: integer('member_count').default(0).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),

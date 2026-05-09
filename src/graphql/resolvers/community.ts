@@ -126,8 +126,6 @@ export const communityResolvers = {
           description?: string;
           iconUrl?: string;
           bannerUrl?: string;
-          topic: string;
-          communityType?: 'public' | 'private';
         };
       },
       context: GraphQLContext,

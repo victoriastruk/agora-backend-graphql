@@ -133,21 +133,21 @@ export const notificationResolvers = {
     },
   },
 
-  Subscription: {
-    notificationReceived: {
-      subscribe: withFilter(
-        () => pubsub.asyncIterableIterator(Events.NOTIFICATION_RECEIVED),
-        (
-          payload: { notificationReceived: { userId: number } } | undefined,
-          _variables: unknown,
-          context: GraphQLContext
-        ) => {
-          if (!payload || !context.userId) return false;
-          return payload.notificationReceived.userId === context.userId;
-        }
-      ),
-    },
-  },
+  // Subscription: {
+  //   notificationReceived: {
+  //     subscribe: withFilter(
+  //       () => pubsub.asyncIterableIterator(Events.NOTIFICATION_RECEIVED),
+  //       (
+  //         payload: { notificationReceived: { userId: number } } | undefined,
+  //         _variables: unknown,
+  //         context: GraphQLContext
+  //       ) => {
+  //         if (!payload || !context.userId) return false;
+  //         return payload.notificationReceived.userId === context.userId;
+  //       }
+  //     ),
+  //   },
+  // },
 };
 
 export { enrichNotification };
