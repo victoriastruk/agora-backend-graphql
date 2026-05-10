@@ -1,61 +1,80 @@
 import { db } from "@/db/client";
 import { sql } from "drizzle-orm";
-import { users } from "@/db/schema";
+import { users, communities, communityMembers } from "@/db/schema";
 import { AuthUtils } from "@/utils/auth";
-
-const mockUsers = [
-  {
-    username: "johndoe",
-    email: "john.doe@example.com",
-    password: "password123",
-  },
-  {
-    username: "janedoe",
-    email: "jane.doe@example.com",
-    password: "password123",
-  },
-  {
-    username: "bobsmith",
-    email: "bob.smith@example.com",
-    password: "password123",
-  },
-  {
-    username: "alicejohnson",
-    email: "alice.johnson@example.com",
-    password: "password123",
-  },
-  {
-    username: "charliebrown",
-    email: "charlie.brown@example.com",
-    password: "password123",
-  },
-];
+import usersJson from "./data/users.json";
+import communitiesJson from "./data/communities.json";
 
 export async function seed() {
   try {
-    console.log("🌱 Starting database seeding...");
+    console.log("Seeding from JSON...");
 
-    console.log("🧹 Clearing existing data...");
-    await db.execute(sql`TRUNCATE TABLE users CASCADE`);
+    await db.execute(sql`
+      TRUNCATE TABLE 
+        users,
+        communities,
+        community_members,
+        community_moderators
+      RESTART IDENTITY CASCADE
+    `);
 
-    const usersWithHashedPasswords = await Promise.all(
-      mockUsers.map(async (user) => ({
-        username: user.username,
-        email: user.email,
-        passwordHash: await AuthUtils.hashPassword(user.password),
-      }))
+    const insertedUsers = await db
+      .insert(users)
+      .values(
+        await Promise.all(
+          usersJson.map(async (u) => ({
+            username: u.username,
+            email: u.email,
+            passwordHash: await AuthUtils.hashPassword(u.password),
+          }))
+        )
+      )
+      .returning();
+
+    const userMap = new Map(insertedUsers.map((u) => [u.username, u.id]));
+
+    const insertedCommunities = await db
+      .insert(communities)
+      .values(
+        communitiesJson.map((c) => ({
+          name: c.name,
+          displayName: c.displayName,
+          description: c.description,
+          iconUrl: c.iconUrl,
+          bannerUrl: c.bannerUrl,
+          creatorId: userMap.get(c.creator)!,
+        }))
+      )
+      .returning();
+
+    const communityMap = new Map(
+      insertedCommunities.map((c) => [c.name, c.id])
     );
 
-    await db.insert(users).values(usersWithHashedPasswords);
+    await db.insert(communityMembers).values([
+      ...insertedCommunities.map((c) => ({
+        userId: c.creatorId!,
+        communityId: c.id,
+      })),
+    ]);
 
-    console.log("✅ Database seeded successfully!");
-    console.log(`📊 Inserted ${mockUsers.length} users`);
-  } catch (error) {
-    console.error("❌ Error seeding database:", error);
+    await db.execute(sql`
+      UPDATE communities c
+      SET member_count = sub.count
+      FROM (
+        SELECT community_id, COUNT(*) as count
+        FROM community_members
+        GROUP BY community_id
+      ) sub
+      WHERE c.id = sub.community_id
+    `);
+
+    console.log("Seed complete");
+  } catch (e) {
+    console.error("Seed failed:", e);
     process.exit(1);
   }
 }
-
 if (require.main === module) {
   seed().then(() => process.exit(0));
 }

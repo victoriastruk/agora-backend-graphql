@@ -8,6 +8,7 @@ import {
   pgEnum,
   varchar,
   boolean,
+  unique,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
@@ -43,30 +44,35 @@ export const userSocialLinks = pgTable('user_social_links', {
     .$onUpdate(() => new Date()),
 });
 
-
 export const communities = pgTable('communities', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 21 }).notNull().unique(),
   displayName: varchar('display_name', { length: 255 }).notNull(),
   description: varchar('description', { length: 500 }),
   iconUrl: text('icon_url'),
-  bannerUrl: text('banner_url'), 
+  bannerUrl: text('banner_url'),
   creatorId: integer('creator_id').references(() => users.id),
   memberCount: integer('member_count').default(0).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
-export const communityMembers = pgTable('community_members', {
-  id: serial('id').primaryKey(),
-  userId: integer('user_id')
-    .references(() => users.id)
-    .notNull(),
-  communityId: integer('community_id')
-    .references(() => communities.id)
-    .notNull(),
-  joinedAt: timestamp('joined_at').defaultNow().notNull(),
-});
+export const communityMembers = pgTable(
+  'community_members',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id')
+      .references(() => users.id)
+      .notNull(),
+    communityId: integer('community_id')
+      .references(() => communities.id)
+      .notNull(),
+    joinedAt: timestamp('joined_at').defaultNow().notNull(),
+  },
+  table => ({
+    uniqueMembership: unique().on(table.userId, table.communityId),
+  }),
+);
 
 export const moderatorRoleEnum = pgEnum('moderator_role', [
   'owner',
@@ -223,9 +229,15 @@ export const notifications = pgTable('notifications', {
     .references(() => users.id, { onDelete: 'cascade' })
     .notNull(),
   type: notificationTypeEnum('type').notNull(),
-  actorId: integer('actor_id').references(() => users.id, { onDelete: 'set null' }),
-  postId: integer('post_id').references(() => posts.id, { onDelete: 'cascade' }),
-  commentId: integer('comment_id').references(() => comments.id, { onDelete: 'cascade' }),
+  actorId: integer('actor_id').references(() => users.id, {
+    onDelete: 'set null',
+  }),
+  postId: integer('post_id').references(() => posts.id, {
+    onDelete: 'cascade',
+  }),
+  commentId: integer('comment_id').references(() => comments.id, {
+    onDelete: 'cascade',
+  }),
   message: text('message').notNull(),
   isRead: boolean('is_read').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -368,6 +380,27 @@ export const reportsRelations = relations(reports, ({ one }) => ({
   }),
 }));
 
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(users, {
+    fields: [notifications.userId],
+    references: [users.id],
+    relationName: 'notificationRecipient',
+  }),
+  actor: one(users, {
+    fields: [notifications.actorId],
+    references: [users.id],
+    relationName: 'notificationActor',
+  }),
+  post: one(posts, {
+    fields: [notifications.postId],
+    references: [posts.id],
+  }),
+  comment: one(comments, {
+    fields: [notifications.commentId],
+    references: [comments.id],
+  }),
+}));
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type UserSocialLink = typeof userSocialLinks.$inferSelect;
@@ -394,24 +427,3 @@ export type CommunityModerator = typeof communityModerators.$inferSelect;
 export type NewCommunityModerator = typeof communityModerators.$inferInsert;
 export type Notification = typeof notifications.$inferSelect;
 export type NewNotification = typeof notifications.$inferInsert;
-
-export const notificationsRelations = relations(notifications, ({ one }) => ({
-  user: one(users, {
-    fields: [notifications.userId],
-    references: [users.id],
-    relationName: 'notificationRecipient',
-  }),
-  actor: one(users, {
-    fields: [notifications.actorId],
-    references: [users.id],
-    relationName: 'notificationActor',
-  }),
-  post: one(posts, {
-    fields: [notifications.postId],
-    references: [posts.id],
-  }),
-  comment: one(comments, {
-    fields: [notifications.commentId],
-    references: [comments.id],
-  }),
-}));

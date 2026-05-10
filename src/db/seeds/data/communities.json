@@ -1,0 +1,42 @@
+[
+  {
+    "name": "tech-talk",
+    "displayName": "Tech Talk",
+    "description": "A community for technology enthusiasts to discuss the latest trends and innovations in the tech world.",
+    "iconUrl": "https://png.pngtree.com/png-vector/20220621/ourmid/pngtree-cartoon-vector-illustration-of-online-support-center-for-customer-help-tech-support-feedback-service-and-internet-technology-vector-png-image_47239620.jpg",
+    "bannerUrl": "https://st5.depositphotos.com/1826664/75336/i/450/depositphotos_753369962-stock-photo-tech-talk-text-written-blue.jpg",
+    "creator": "johndoe"
+  },
+  {
+    "name": "foodies-unite",
+    "displayName": "Foodies Unite",
+    "description": "A place for food lovers to share recipes, restaurant reviews, and culinary adventures.",
+    "iconUrl": "https://e7.pngegg.com/pngimages/80/950/png-clipart-computer-icons-foodie-blog-categories-miscellaneous-food-thumbnail.png",
+    "bannerUrl": "https://www.shutterstock.com/image-photo/young-happy-people-having-lunch-260nw-2423760611.jpg",
+    "creator": "janedoe"
+  },
+  {
+    "name": "travel-buddies",
+    "displayName": "Travel Buddies",
+    "description": "Connect with fellow travelers, share tips, and plan your next adventure together.",
+    "iconUrl": "https://images.pexels.com/photos/4901969/pexels-photo-4901969.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500",
+    "bannerUrl": "https://media.istockphoto.com/id/1330224115/photo/two-friends-are-diving-in-the-sea-from-a-cliff.jpg?s=612x612&w=0&k=20&c=4Kl_in8hGhStP-YkwKKCv18gAhNbECYUbao6F1RGQLI=",
+    "creator": "bobsmith"
+  },
+  {
+    "name": "fitness-freaks",
+    "displayName": "Fitness Freaks",
+    "description": "A community for fitness enthusiasts to share workout routines, nutrition advice, and motivation.",
+    "iconUrl": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQZ-YJUkGfObhHEtozm6HhX-GI7YvWBw-wIqA&s",
+    "bannerUrl": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQIkcWBlNojKkKHSu6f1kDAT00rbDj-crDLdQ&s",
+    "creator": "charliebrown"
+  },
+  {
+    "name": "bookworms",
+    "displayName": "Bookworms",
+    "description": "A haven for book lovers to discuss their favorite reads, share recommendations, and host virtual book clubs.",
+    "iconUrl": "https://img.freepik.com/premium-vector/cute-caterpillar-bookworm-worm-cute-cartoon-character-education-mascot-wearing-graduation-hat_1025254-261.jpg?semt=ais_hybrid&w=740&q=80",
+    "bannerUrl": "https://t3.ftcdn.net/jpg/01/75/67/62/360_F_175676238_fcWLoFclY8gvgvNa6Fdq9FaCIInJyTRU.jpg",
+    "creator": "alicejohnson"
+  }
+]
